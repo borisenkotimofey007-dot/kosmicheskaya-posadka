@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Космическая посадка</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:#050b19; color:#eef5ff; font-family:Arial,Helvetica,sans-serif; }
+  .wrap { max-width:1100px; margin:0 auto; padding:14px; }
+  header { display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap; margin-bottom:10px; }
+  h1 { font-size:clamp(22px,4vw,34px); margin:0; letter-spacing:.4px; }
+  .stats { display:flex; gap:8px; flex-wrap:wrap; }
+  .pill { background:#111e36; border:1px solid #263b60; padding:9px 12px; border-radius:12px; font-weight:bold; }
+  canvas { display:block; width:100%; height:auto; aspect-ratio:16/9; border:1px solid #29456c; border-radius:16px; background:#08152b; box-shadow:0 10px 35px #0008; }
+  .game-stage { position:relative; }
+  #outcomePanel { position:absolute; left:50%; top:67%; transform:translate(-50%,-50%); width:max-content; max-width:95%; margin:0 !important; padding:0; background:transparent; border:0; box-shadow:none; text-align:center; pointer-events:none; }
+  #outcomePanel #message { display:none; }
+  #outcomePanel .buttons { justify-content:center; margin:0; pointer-events:auto; gap:8px; }
+  #outcomePanel button { box-shadow:0 4px 16px #000b; }
+  @media(max-width:520px) { #outcomePanel { top:72%; } #outcomePanel button { padding:8px 10px; font-size:12px; } }
+  .tournament-row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  .tournament-row label { color:#b9c9e4; font-size:14px; }
+  .tournament-row input { width:90px; background:#071226; color:#eef5ff; border:1px solid #2b4165; border-radius:9px; padding:10px; }
+  .scoreboard { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  .score-chip { background:#071226; border:1px solid #29456c; border-radius:9px; padding:8px 10px; }
+  .below { display:grid; grid-template-columns:1.2fr .8fr; gap:12px; margin-top:12px; }
+  .panel { background:#0c162a; border:1px solid #203656; border-radius:14px; padding:14px; }
+  .panel h2 { margin:0 0 9px; font-size:18px; }
+  p { color:#b9c9e4; line-height:1.45; margin:7px 0; }
+  .buttons { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  #continueLevel { background:#159765; } #retryFlight { background:#c43d52; }
+  button { background:#1d69d8; color:white; border:0; border-radius:10px; padding:10px 13px; font-weight:bold; cursor:pointer; }
+  button:hover { filter:brightness(1.14); }
+  button:disabled { background:#334158; color:#8796ad; cursor:not-allowed; }
+  .upgrade { display:flex; justify-content:space-between; gap:10px; align-items:center; padding:10px 0; border-top:1px solid #203656; }
+  .upgrade:first-of-type { border-top:0; }
+  .upgrade small { display:block; color:#9fb2d0; margin-top:4px; }
+  .upgrade button { white-space:nowrap; }
+  .mobile { display:none; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:10px; }
+  .mobile button { min-height:48px; touch-action:none; }
+  .ship-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+  .ship-card { border:1px solid #263b60; border-radius:12px; padding:12px; background:#0a1324; }
+  .ship-card strong { display:block; margin-bottom:5px; }
+  .ship-card p { font-size:13px; margin:5px 0 10px; }
+  .ship-card button { width:100%; }
+  .hint { font-size:13px; color:#91a6c8; }
+  .net-row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .net-row input { min-width:120px; flex:1; background:#071226; color:#eef5ff; border:1px solid #2b4165; border-radius:9px; padding:10px 12px; }
+  .net-status { font-size:14px; color:#a9c5e9; }
+  .net-players { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .net-player { padding:5px 8px; border:1px solid #29456c; border-radius:8px; background:#09172b; font-size:13px; }
+  @media(max-width:720px) { .below { grid-template-columns:1fr; } .mobile { display:grid; } .wrap {padding:9px;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🚀 Космическая посадка</h1>
+    <div class="stats">
+      <div class="pill">🪙 Монеты: <span id="coins">0</span></div>
+      <div class="pill">⛽ Топливо: <span id="fuel">100</span>%</div>
+      <div class="pill">🏆 Посадки: <span id="landings">0</span></div>
+      <div class="pill">🌍 Уровень: <span id="level">1</span></div>
+    </div>
+  </header>
+  <div class="game-stage">
+  <canvas id="game" width="960" height="540" aria-label="Игра про посадку космического корабля"></canvas>
+  <section class="panel" id="outcomePanel" style="margin-top:10px">
+    <p class="hint" id="message">Миссия: выполни мягкую посадку!</p>
+    <div class="buttons" style="margin-top:8px">
+      <button id="continueLevel" hidden>▶ Продолжить</button>
+      <button id="retryFlight" hidden>↻ Повторить попытку</button>
+    </div>
+  </section>
+  </div>
+  <section class="panel" style="margin-top:12px" id="tournamentPanel">
+    <h2>🏁 Турнир посадок</h2>
+    <p>Соревнуйся с двумя ботами на выбранном количестве уровней. За посадку первым даётся 3 очка, вторым — 2, третьим — 1. Если корабль разбился, очки за этот раунд не начисляются.</p>
+    <div class="tournament-row">
+      <label for="tournamentLevels">Количество уровней:</label>
+      <input id="tournamentLevels" type="number" min="1" max="50" value="10">
+      <button id="startTournament">🏁 Начать турнир</button>
+      <button id="stopTournament" hidden>Завершить турнир</button>
+    </div>
+    <p class="hint" id="tournamentStatus">Турнир не запущен.</p>
+    <div class="scoreboard" id="tournamentScores"></div>
+  </section>
+  <section class="panel" style="margin-top:12px">
+    <h2>🌐 Сетевая игра · до 8 игроков</h2>
+    <p>Создай комнату и отправь друзьям её код. Чтобы играть через интернет, откройте игру по одному и тому же опубликованному адресу сайта.</p>
+    <div class="net-row">
+      <input id="nickname" maxlength="18" placeholder="Твой ник" value="Пилот" aria-label="Ник игрока">
+      <input id="roomCode" maxlength="5" placeholder="Код комнаты" aria-label="Код комнаты">
+      <button id="createRoom">Создать комнату</button>
+      <button id="joinRoom">Войти по коду</button>
+      <button id="leaveRoom" disabled>Выйти</button>
+    </div>
+    <p class="net-status" id="netStatus">Не подключено. Опубликуй игру с сервером, чтобы включить мультиплеер.</p>
+    <div class="net-players" id="netPlayers"></div>
+  </section>
+  <div class="mobile">
+    <button id="left">◀ Влево</button><button id="thrust">▲ Тяга</button><button id="right">Вправо</button>
+  </div>
+  <section class="panel" style="margin-top:12px">
+    <h2>💾 Сохранение на диск</h2>
+    <p>Прогресс автоматически сохраняется в Chrome. Для резервной копии сохрани файл на SSD или жёсткий диск, а затем загрузи его при необходимости.</p>
+    <div class="buttons">
+      <button id="saveToDisk">💾 Сохранить в файл</button>
+      <button id="loadFromDisk">📂 Загрузить сохранение</button>
+      <input id="saveFileInput" type="file" accept="application/json,.json" hidden>
+    </div>
+    <p class="hint" id="saveStatus">Автосохранение включено для этого браузера.</p>
+  </section>
+  <div class="below">
+    <section class="panel">
+      <h2>Как играть</h2>
+      <p>Посади корабль на зелёную площадку на Земле. Не врезайся в землю и не касайся площадки слишком быстро!</p>
+      <p><b>← →</b> или <b>A / D</b> — двигаться в стороны. <b>Пробел</b> или <b>↑ / W</b> — включить двигатель. <b>R</b> — начать заново.</p>
+      <p>Мягкая посадка: снижай скорость двигателем и точно попадай на площадку. С каждым уровнем появляются новые опасности: метеориты, которые могут разбить корабль.</p>
+      <div class="buttons">
+        <button id="restart">↻ Перезапустить полёт</button>
+        <button id="resetSave">Сбросить прогресс</button>
+      </div>
+    </section>
+    <section class="panel">
+      <h2>Мастерская корабля</h2>
+      <div class="upgrade"><div><b>🛡️ Усиленный корпус</b><small>Больше шансов пережить жёсткое касание.</small><small>Уровень: <span id="hullLevel">0</span></small></div><button id="hullBuy">Купить · 40 🪙</button></div>
+      <div class="upgrade"><div><b>⚡ Мощный двигатель</b><small>Быстрее гасит падение и помогает взлетать.</small><small>Уровень: <span id="engineLevel">0</span></small></div><button id="engineBuy">Купить · 50 🪙</button></div>
+      <div class="upgrade"><div><b>⛽ Топливный бак</b><small>Больше топлива в начале полёта.</small><small>Уровень: <span id="tankLevel">0</span></small></div><button id="tankBuy">Купить · 35 🪙</button></div>
+    </section>
+    <section class="panel" style="grid-column:1/-1">
+      <h2>🛸 Магазин новых кораблей</h2>
+      <p>Покупай новые корабли за монеты. У каждого свой запас топлива и мощность двигателя. Купленный корабль можно выбирать бесплатно.</p>
+      <div class="ship-grid" id="shipShop"></div>
+    </section>
+  </div>
+</div>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+(() => {
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const W=canvas.width,H=canvas.height, groundY=478;
+  const $ = id => document.getElementById(id);
+  const defaults = {coins:0,landings:0,hull:0,engine:0,tank:0,ownedShips:['scout'],selectedShip:'scout'};
+  const ships = [
+    {id:'scout',name:'Разведчик',price:0,desc:'Стартовый корабль. Лёгкий и простой.',fuel:100,thrust:1,color:'#dce8f5',accent:'#2d8cda',side:1},
+    {id:'comet',name:'Комета',price:500,desc:'Быстрый корабль с увеличенным баком.',fuel:145,thrust:1.25,color:'#e6f7ff',accent:'#36d9f5',side:1.2},
+    {id:'voyager',name:'Странник',price:1000,desc:'Улучшенная тяга и крепкий корпус.',fuel:180,thrust:1.5,color:'#ffe2a8',accent:'#ff9f43',side:1.35},
+    {id:'cruiser',name:'Галактический крейсер',price:5000,desc:'Тяжёлый элитный корабль с огромным баком.',fuel:260,thrust:1.8,color:'#d9caff',accent:'#a477ff',side:1.5}
+  ];
+  let save;
+  try { save = {...defaults, ...JSON.parse(localStorage.getItem('spaceLandingSave')||'{}')}; }
+  catch(e) { save={...defaults}; }
+  if(!Array.isArray(save.ownedShips)) save.ownedShips=['scout'];
+  if(!save.ownedShips.includes('scout')) save.ownedShips.unshift('scout');
+  if(!ships.some(s=>s.id===save.selectedShip) || !save.ownedShips.includes(save.selectedShip)) save.selectedShip='scout';
+  function currentModel(){return ships.find(s=>s.id===save.selectedShip)||ships[0];}
+  function renderShop(){
+    const shop=$('shipShop'); shop.innerHTML='';
+    ships.forEach(model=>{
+      const owned=save.ownedShips.includes(model.id), selected=save.selectedShip===model.id;
+      const card=document.createElement('div');card.className='ship-card';
+      const title=document.createElement('strong');title.textContent=model.name+(selected?' · выбран':'');card.appendChild(title);
+      const desc=document.createElement('p');desc.textContent=model.desc+' Топливо: '+model.fuel+' · Тяга: '+model.thrust.toFixed(2)+'x';card.appendChild(desc);
+      const btn=document.createElement('button');
+      btn.textContent=selected?'Выбран':owned?'Выбрать':model.price.toLocaleString('ru-RU')+' 🪙 · Купить';
+      btn.disabled=selected||(!owned&&save.coins<model.price);
+      btn.onclick=()=>{
+        if(owned){save.selectedShip=model.id;persist();newFlight();setMessage('Выбран корабль «'+model.name+'». Удачного полёта!');}
+        else if(save.coins>=model.price){save.coins-=model.price;save.ownedShips.push(model.id);save.selectedShip=model.id;persist();newFlight();setMessage('Куплен новый корабль «'+model.name+'»!');}
+      };
+      card.appendChild(btn);shop.appendChild(card);
+    });
+  }
+  const keys = {};
+  let ship, terrain, pad, stars, meteors, bots=[], explosions=[], status, message, lastTime=0, elapsed=0;
+  let activeLevel = null;
+  const tournament={active:false,totalLevels:10,currentLevel:1,points:{'Ты':0,'Бот-Альфа':0,'Бот-Браво':0},roundFinishOrder:[],playerDone:false,roundComplete:false};
+  function updateTournamentUI(){
+    const scores=$('tournamentScores'); scores.innerHTML='';
+    for(const name of ['Ты','Бот-Альфа','Бот-Браво']){
+      const chip=document.createElement('span');chip.className='score-chip';chip.textContent='🏆 '+name+': '+(tournament.points[name]||0)+' очк.';scores.appendChild(chip);
+    }
+    $('startTournament').hidden=tournament.active;
+    $('stopTournament').hidden=!tournament.active;
+    if(tournament.active){
+      $('tournamentStatus').textContent='Турнир идёт · уровень '+tournament.currentLevel+' из '+tournament.totalLevels+(tournament.roundFinishOrder.length?' · места: '+tournament.roundFinishOrder.map((x,i)=>(i+1)+'. '+x.name+' (+'+x.points+')').join(', '):' · пока никто не приземлился');
+    }
+  }
+  function registerTournamentLanding(name){
+    if(!tournament.active || tournament.roundFinishOrder.some(x=>x.name===name))return;
+    const rank=tournament.roundFinishOrder.length; if(rank>=3)return;
+    const points=[3,2,1][rank];tournament.points[name]=(tournament.points[name]||0)+points;
+    tournament.roundFinishOrder.push({name,points});updateTournamentUI();
+    setMessage(name+' приземлился '+(['первым','вторым','третьим'][rank])+': +'+points+' очк.');
+  }
+  function maybeFinishTournamentRound(){
+    if(!tournament.active || tournament.roundComplete || !tournament.playerDone || !bots.every(b=>b.landed))return;
+    tournament.roundComplete=true;
+    const final=tournament.currentLevel>=tournament.totalLevels;
+    $('continueLevel').textContent=final?'🏁 Показать итоги':'▶ Следующий уровень';
+    $('continueLevel').hidden=false;$('retryFlight').hidden=true;
+    const order=tournament.roundFinishOrder.map((x,i)=>(i+1)+'. '+x.name+' (+'+x.points+')').join(' · ')||'Никто не успел приземлиться';
+    setMessage('Уровень турнира '+tournament.currentLevel+' завершён. '+order+(final?' · Это был последний уровень!':' · Нажми «Следующий уровень».'));
+    $('tournamentStatus').textContent='Раунд '+tournament.currentLevel+'/'+tournament.totalLevels+' завершён · '+order;
+    updateTournamentUI();
+  }
+  function startTournamentRound(){
+    if(!tournament.active)return;
+    tournament.roundFinishOrder=[];tournament.playerDone=false;tournament.roundComplete=false;
+    $('continueLevel').textContent='▶ Следующий уровень';
+    newFlight(false,'tournament');
+    $('tournamentStatus').textContent='Турнир идёт · уровень '+tournament.currentLevel+' из '+tournament.totalLevels;
+    updateTournamentUI();
+  }
+  $('startTournament').onclick=()=>{
+    const n=Math.max(1,Math.min(50,Math.floor(Number($('tournamentLevels').value)||10)));
+    $('tournamentLevels').value=n;
+    tournament.active=true;tournament.totalLevels=n;tournament.currentLevel=1;tournament.points={'Ты':0,'Бот-Альфа':0,'Бот-Браво':0};
+    updateTournamentUI();startTournamentRound();
+  };
+  $('stopTournament').onclick=()=>{tournament.active=false;tournament.roundComplete=false;$('continueLevel').hidden=true;$('retryFlight').hidden=status==='flying';$('tournamentStatus').textContent='Турнир завершён вручную.';updateTournamentUI();};
+  // Network state: each player flies locally; the server relays positions to everyone in the room.
+  let socket=null, roomCode='', myPlayerId='', sharedSeed=0, remotePlayers={};
+  let lastNetworkSend=0;
+  const netStatus=$('netStatus'), netPlayers=$('netPlayers');
+  function networkMessage(text){netStatus.textContent=text;}
+  function seededRandom(seed){let a=(seed>>>0)||1;return ()=>{a|=0;a=(a+0x6D2B79F5)|0;let t=Math.imul(a^(a>>>15),1|a);t=(t+Math.imul(t^(t>>>7),61|t))^t;return ((t^(t>>>14))>>>0)/4294967296;};}
+  function levelNow(){return activeLevel===null ? 1+Math.floor(save.landings/2) : activeLevel;}
+  function persist(){
+    try { localStorage.setItem('spaceLandingSave',JSON.stringify(save)); $('saveStatus').textContent='Автосохранено в Chrome. Для копии на диске нажми «Сохранить в файл».'; }
+    catch(e) { $('saveStatus').textContent='Chrome не смог сохранить автосохранение. Используй «Сохранить в файл».'; }
+    updateUI(); renderShop();
+  }
+  function savePayload(){ return JSON.stringify({format:'kosmicheskaya-posadka-save',version:1,savedAt:new Date().toISOString(),save},null,2); }
+  async function saveToDisk(){
+    const data=savePayload();
+    try {
+      if(window.showSaveFilePicker){
+        const handle=await window.showSaveFilePicker({suggestedName:'kosmicheskaya-posadka-save.json',types:[{description:'Сохранение игры',accept:{'application/json':['.json']}}]});
+        const writable=await handle.createWritable(); await writable.write(data); await writable.close();
+        $('saveStatus').textContent='Сохранение записано в выбранную папку на диске.';
+      } else {
+        const blob=new Blob([data],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='kosmicheskaya-posadka-save.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+        $('saveStatus').textContent='Файл сохранения скачан. Проверь папку «Загрузки» и перемести его на диск при желании.';
+      }
+    } catch(e){ if(e&&e.name==='AbortError') $('saveStatus').textContent='Сохранение отменено.'; else $('saveStatus').textContent='Не удалось сохранить файл. Попробуй ещё раз или проверь разрешения Chrome.'; }
+  }
+  function loadSaveFile(file){
+    if(!file)return;
+    const reader=new FileReader();
+    reader.onload=()=>{
+      try{
+        const parsed=JSON.parse(String(reader.result||''));
+        const incoming=parsed&&parsed.save?parsed.save:parsed;
+        if(!incoming||typeof incoming!=='object'||!Number.isFinite(Number(incoming.coins))||!Number.isFinite(Number(incoming.landings))) throw new Error('invalid save');
+        const next={...defaults,...incoming};
+        next.coins=Math.max(0,Math.floor(Number(next.coins)||0)); next.landings=Math.max(0,Math.floor(Number(next.landings)||0));
+        for(const key of ['hull','engine','tank']) next[key]=Math.max(0,Math.floor(Number(next[key])||0));
+        if(!Array.isArray(next.ownedShips)) next.ownedShips=['scout'];
+        next.ownedShips=[...new Set(['scout',...next.ownedShips.filter(id=>ships.some(sh=>sh.id===id))])];
+        if(!ships.some(sh=>sh.id===next.selectedShip)||!next.ownedShips.includes(next.selectedShip)) next.selectedShip='scout';
+        save=next; persist(); newFlight(); $('saveStatus').textContent='Сохранение загружено! Монеты, посадки, корабли и улучшения восстановлены.';
+      }catch(e){$('saveStatus').textContent='Не получилось прочитать этот файл сохранения. Выбери JSON-файл, созданный этой игрой.';}
+    };
+    reader.onerror=()=>{$('saveStatus').textContent='Не удалось прочитать файл.';}; reader.readAsText(file);
+  }
+  $('saveToDisk').addEventListener('click',saveToDisk);
+  $('loadFromDisk').addEventListener('click',()=> $('saveFileInput').click());
+  $('saveFileInput').addEventListener('change',e=>{loadSaveFile(e.target.files&&e.target.files[0]);e.target.value='';});
+  function updateUI(){
+    $('coins').textContent=save.coins; $('landings').textContent=save.landings; $('level').textContent=levelNow();
+    $('hullLevel').textContent=save.hull; $('engineLevel').textContent=save.engine; $('tankLevel').textContent=save.tank;
+    $('hullBuy').textContent='Купить · '+(40+save.hull*35)+' 🪙';
+    $('engineBuy').textContent='Купить · '+(50+save.engine*45)+' 🪙';
+    $('tankBuy').textContent='Купить · '+(35+save.tank*30)+' 🪙';
+    $('hullBuy').disabled=save.coins<40+save.hull*35;
+    $('engineBuy').disabled=save.coins<50+save.engine*45;
+    $('tankBuy').disabled=save.coins<35+save.tank*30;
+    $('fuel').textContent=ship?Math.max(0,Math.ceil(ship.fuel/ship.maxFuel*100)):100;
+  }
+  function newFlight(fromNetwork=false, mode='next'){
+    if(tournament.active && mode==='tournament') activeLevel=tournament.currentLevel;
+    else if(mode==='next' || activeLevel===null) activeLevel=1+Math.floor(save.landings/2);
+    explosions=[]; $('continueLevel').hidden=true; $('retryFlight').hidden=true;
+    terrain=[];
+    // In a room, everyone uses the same seed so the landing zone and initial hazards match.
+    const rnd=(roomCode && sharedSeed)?seededRandom(sharedSeed):Math.random;
+    let x=0; terrain.push({x:0,y:groundY});
+    while(x<W){ x+=25+rnd()*30; terrain.push({x:Math.min(x,W),y:groundY-rnd()*48}); }
+    // Platform changes position every flight, so the player must steer.
+    const minPadX = W*0.40, maxPadX = W*0.76;
+    pad={x:minPadX+rnd()*(maxPadX-minPadX),w:130,y:groundY-8};
+    terrain=terrain.filter(p=>p.x<pad.x-3 || p.x>pad.x+pad.w+3);
+    terrain.push({x:pad.x,y:pad.y},{x:pad.x+pad.w,y:pad.y});
+    terrain.sort((a,b)=>a.x-b.x);
+    stars=Array.from({length:100},()=>({x:rnd()*W,y:rnd()*360,r:rnd()*1.7+.4,a:rnd()*.65+.25}));
+    // More meteorites appear on later levels. Keep them away from the ship at the start.
+    const level=levelNow();
+    const meteorCount=level<2?0:Math.min(2+Math.floor(level/2),7);
+    meteors=Array.from({length:meteorCount},(_,i)=>({x:W*.43+rnd()*W*.55,y:70+rnd()*245,r:10+rnd()*9,vx:(rnd()<.5?-1:1)*(45+level*8+rnd()*35),vy:12+rnd()*20,spin:rnd()*6,spinV:(rnd()-.5)*2}));
+    const model=currentModel();
+    const maxFuel=model.fuel+save.tank*30;
+    ship={x:W*.25,y:110,vx:0,vy:0,angle:0,fuel:maxFuel,maxFuel,thrust:false,flame:0,model:model.id};
+    // Friendly AI pilots fly their own ships and occasionally attempt a landing.
+    bots=Array.from({length:2},(_,i)=>({name:['Бот-Альфа','Бот-Браво'][i],x:W*(.68+i*.12),y:90+i*55,vx:0,vy:0,color:i?'#ff9866':'#68f0c1',phase:Math.random()*12,landed:false,landTimer:0,alive:true,respawnTimer:0}));
+    status='flying'; message='Миссия: выполни мягкую посадку!';
+    $('message').textContent='Уровень '+levelNow()+': '+(levelNow()<2?'первая тренировочная посадка.':'остерегайся метеоритов!'); updateUI(); renderShop();
+    if(roomCode && socket && socket.connected && !fromNetwork){socket.emit('request-world-reset',{roomCode});}
+  }
+  function setMessage(t){message=t;$('message').textContent=t;}
+  function buy(kind){
+    const cost=kind==='hull'?40+save.hull*35:kind==='engine'?50+save.engine*45:35+save.tank*30;
+    if(save.coins<cost)return;
+    save.coins-=cost; save[kind]++; persist();
+    setMessage('Улучшение установлено! Отправляйся на посадку.');
+    if(kind==='tank' && ship && status==='flying'){ship.maxFuel+=30;ship.fuel+=30;}
+  }
+  $('hullBuy').onclick=()=>buy('hull'); $('engineBuy').onclick=()=>buy('engine'); $('tankBuy').onclick=()=>buy('tank');
+  $('restart').onclick=()=>newFlight(false,'retry');
+  $('continueLevel').onclick=()=>{
+    if(tournament.active){
+      if(!tournament.roundComplete)return;
+      if(tournament.currentLevel<tournament.totalLevels){tournament.currentLevel++;startTournamentRound();}
+      else{
+        tournament.active=false;tournament.roundComplete=false;$('continueLevel').hidden=true;$('retryFlight').hidden=true;
+        const ranking=['Ты','Бот-Альфа','Бот-Браво'].sort((a,b)=>(tournament.points[b]||0)-(tournament.points[a]||0));
+        const summary=ranking.map((name,i)=>(i+1)+'. '+name+' — '+tournament.points[name]+' очк.').join(' · ');
+        $('tournamentStatus').textContent='🏁 Турнир завершён! Итог: '+summary;setMessage('🏆 Турнир завершён! '+summary);updateTournamentUI();
+      }
+    } else newFlight(false,'next');
+  };
+  $('retryFlight').onclick=()=>newFlight(false,'retry');
+  function showOutcomeButtons(){
+    if(tournament.active){
+      $('continueLevel').hidden=!tournament.roundComplete;
+      $('retryFlight').hidden=true;
+      return;
+    }
+    const ended=status!=='flying';
+    $('continueLevel').hidden=status!=='landed';
+    $('retryFlight').hidden=!ended;
+  }
+  $('resetSave').onclick=()=>{if(confirm('Сбросить все монеты, посадки и улучшения?')){save={...defaults,ownedShips:['scout'],selectedShip:'scout'};persist();newFlight();}};
+  document.addEventListener('keydown',e=>{const k=e.key.toLowerCase();
+    if(k==='r'||e.code==='KeyR'){e.preventDefault();newFlight();keys.r=false;return;}
+    keys[k]=true;if([' ','arrowup','arrowleft','arrowright'].includes(k))e.preventDefault();
+  });
+  document.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
+  window.addEventListener('blur',()=>{for(const k in keys)keys[k]=false;});
+  canvas.tabIndex=0; canvas.addEventListener('pointerdown',()=>canvas.focus());
+  function holdButton(id,key){const b=$(id);const down=e=>{e.preventDefault();keys[key]=true;};const up=e=>{e.preventDefault();keys[key]=false;};b.addEventListener('pointerdown',down);b.addEventListener('pointerup',up);b.addEventListener('pointerleave',up);b.addEventListener('pointercancel',up);}
+  holdButton('left','arrowleft');holdButton('right','arrowright');holdButton('thrust',' ');
+  // Compatibility: draw rounded rectangles without relying on CanvasRenderingContext2D.roundRect.
+  function roundedRect(x,y,w,h,r){
+    r=Math.max(0,Math.min(r,w/2,h/2));
+    ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+    ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);
+    ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();ctx.fill();
+  }
+  function drawBackground(){
+    const cycle=(elapsed%100)/100; const phase=cycle<.25?'Ночь':cycle<.42?'Рассвет':cycle<.68?'День':cycle<.84?'Закат':'Сумерки';
+    let top='#050a20',mid='#102c55',bottom='#244b72';
+    if(phase==='Рассвет'){top='#30234c';mid='#b65f67';bottom='#e9a66d';} else if(phase==='День'){top='#2875b6';mid='#65b8dc';bottom='#b6e4d3';} else if(phase==='Закат'){top='#241d50';mid='#b95d6c';bottom='#f3a15e';} else if(phase==='Сумерки'){top='#101a3e';mid='#56436f';bottom='#8c6579';}
+    const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,top);g.addColorStop(.65,mid);g.addColorStop(1,bottom);ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+    // Sun or moon follows the day/night cycle.
+    const celestialX=110+cycle*740, celestialY=phase==='День'?105:phase==='Рассвет'||phase==='Закат'?260:90; ctx.save();ctx.globalAlpha=phase==='Ночь'?.9:1;ctx.fillStyle=phase==='Ночь'?'#e5f1ff':'#ffe6a1';ctx.shadowColor=ctx.fillStyle;ctx.shadowBlur=phase==='День'?16:28;ctx.beginPath();ctx.arc(celestialX,celestialY,phase==='Ночь'?18:25,0,Math.PI*2);ctx.fill();ctx.restore();
+    ctx.fillStyle='#ffffffcc';ctx.font='bold 13px Arial';ctx.textAlign='right';ctx.fillText('☀ '+phase,W-18,52);
+    for(const s of stars){ctx.globalAlpha=s.a*(.8+.2*Math.sin(elapsed*2+s.x));ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill();}
+    ctx.globalAlpha=1;
+    // Earth horizon
+    const eg=ctx.createLinearGradient(0,390,0,500);eg.addColorStop(0,'#3fbd83');eg.addColorStop(.3,'#247b5e');eg.addColorStop(1,'#153c42');
+    ctx.fillStyle=eg;ctx.beginPath();ctx.moveTo(0,groundY);
+    terrain.forEach(p=>ctx.lineTo(p.x,p.y));ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.closePath();ctx.fill();
+    // Landing pad is drawn after the terrain silhouettes so it can never get hidden behind them.
+    // Meteorites are drawn as glowing rocky hazards.
+    if(meteors) for(const m of meteors){
+      ctx.save();ctx.translate(m.x,m.y);ctx.rotate(m.spin);
+      const glow=ctx.createRadialGradient(0,0,2,0,0,m.r*1.9);glow.addColorStop(0,'#ffb15c88');glow.addColorStop(1,'#ff5a2a00');ctx.fillStyle=glow;ctx.beginPath();ctx.arc(0,0,m.r*1.9,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#8d5548';ctx.beginPath();ctx.moveTo(-m.r*.9,-m.r*.2);ctx.lineTo(-m.r*.55,-m.r*.85);ctx.lineTo(m.r*.15,-m.r);ctx.lineTo(m.r*.8,-m.r*.45);ctx.lineTo(m.r,.25*m.r);ctx.lineTo(m.r*.35,m.r*.85);ctx.lineTo(-m.r*.55,m.r*.7);ctx.closePath();ctx.fill();
+      ctx.fillStyle='#e9a06d';ctx.beginPath();ctx.arc(-m.r*.25,-m.r*.25,m.r*.22,0,Math.PI*2);ctx.fill();ctx.restore();
+    }
+    // distant mountain silhouettes
+    ctx.fillStyle='#1a624e';ctx.beginPath();ctx.moveTo(0,groundY+8);for(let x=0;x<=W;x+=45)ctx.lineTo(x,groundY-15-Math.sin(x*.018)*20);ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.closePath();ctx.fill();
+    // Landing platform: bright runway plus pulsing beacon and a guidance beam.
+    const pulse=.5+.5*Math.sin(elapsed*3.5);
+    ctx.save();ctx.globalAlpha=.14+.13*pulse;ctx.fillStyle='#54ffad';ctx.fillRect(pad.x-5,pad.y-34,pad.w+10,45);ctx.restore();
+    ctx.save();const beam=ctx.createLinearGradient(0,pad.y-145,0,pad.y-2);beam.addColorStop(0,'#5bffc000');beam.addColorStop(1,'#5bffc0aa');ctx.fillStyle=beam;ctx.fillRect(pad.x+pad.w/2-3,pad.y-145,6,143);ctx.restore();
+    ctx.fillStyle='#5bdb9a';ctx.fillRect(pad.x,pad.y-3,pad.w,6);
+    ctx.fillStyle='#b5ffd3';ctx.fillRect(pad.x+12,pad.y-7,5,4);ctx.fillRect(pad.x+pad.w-17,pad.y-7,5,4);
+    ctx.save();ctx.shadowColor='#65ffc0';ctx.shadowBlur=12+10*pulse;ctx.strokeStyle='#b5ffd3';ctx.lineWidth=2;ctx.strokeRect(pad.x+1,pad.y-5,pad.w-2,10);ctx.restore();
+    ctx.fillStyle='#e8fff5';ctx.font='bold 14px Arial';ctx.textAlign='center';ctx.fillText('ПОСАДОЧНАЯ ЗОНА',pad.x+pad.w/2,pad.y+24);
+    // Keep the target easy to find even when the landscape is busy.
+    ctx.fillStyle='#8bffd0';ctx.font='bold 12px Arial';ctx.fillText('▼ ЦЕЛЬ',pad.x+pad.w/2,pad.y-13);
+    ctx.fillStyle='#ffffff22';ctx.font='14px Arial';ctx.textAlign='left';ctx.fillText('ЗЕМЛЯ · СЕКТОР 0'+Math.min(9,levelNow()),20,30);
+    if(levelNow()>=2){ctx.fillStyle='#ffbd79';ctx.font='bold 14px Arial';ctx.textAlign='right';ctx.fillText('⚠ МЕТЕОРИТЫ: '+(meteors?meteors.length:0),W-20,30);}
+  }
+  function drawShip(){
+    ctx.save();ctx.translate(ship.x,ship.y);ctx.rotate(ship.angle);
+    if(ship.thrust&&status==='flying'&&ship.fuel>0){
+      const flicker=15+Math.random()*14;
+      ctx.fillStyle='#ffb52e';ctx.beginPath();ctx.moveTo(-7,20);ctx.lineTo(0,20+flicker);ctx.lineTo(7,20);ctx.closePath();ctx.fill();
+      ctx.fillStyle='#fff3a6';ctx.beginPath();ctx.moveTo(-3,20);ctx.lineTo(0,20+flicker*.62);ctx.lineTo(3,20);ctx.closePath();ctx.fill();
+    }
+    // legs
+    ctx.strokeStyle='#a9c7e7';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-8,12);ctx.lineTo(-15,21);ctx.lineTo(-20,21);ctx.moveTo(8,12);ctx.lineTo(15,21);ctx.lineTo(20,21);ctx.stroke();
+    // rocket body
+    const model=currentModel();
+    const body=ctx.createLinearGradient(-13,0,13,0);body.addColorStop(0,model.color);body.addColorStop(.5,'#ffffff');body.addColorStop(1,model.color);
+    ctx.fillStyle=body;ctx.beginPath();
+    if(model.id==='cruiser'){ctx.moveTo(-15,12);ctx.lineTo(-13,-10);ctx.lineTo(-7,-22);ctx.lineTo(7,-22);ctx.lineTo(13,-10);ctx.lineTo(15,12);ctx.closePath();}
+    else if(model.id==='voyager'){ctx.moveTo(-12,12);ctx.lineTo(-12,-7);ctx.lineTo(-5,-23);ctx.lineTo(5,-23);ctx.lineTo(12,-7);ctx.lineTo(12,12);ctx.closePath();}
+    else {ctx.moveTo(-11,12);ctx.lineTo(-9,-9);ctx.quadraticCurveTo(0,-29,9,-9);ctx.lineTo(11,12);ctx.closePath();}ctx.fill();
+    ctx.fillStyle=model.accent;ctx.beginPath();ctx.ellipse(0,-7,5,7,0,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='#e9f6ff';ctx.lineWidth=2;ctx.stroke();
+    ctx.fillStyle=model.accent;ctx.beginPath();ctx.moveTo(-10,4);ctx.lineTo(-19*model.side,14);ctx.lineTo(-9,13);ctx.closePath();ctx.fill();
+    ctx.beginPath();ctx.moveTo(10,4);ctx.lineTo(19*model.side,14);ctx.lineTo(9,13);ctx.closePath();ctx.fill();
+    ctx.restore();
+  }
+  function drawHUD(){
+    ctx.fillStyle='#071226cc';roundedRect(18,45,205,70,10);
+    ctx.fillStyle='#e8f3ff';ctx.font='bold 15px Arial';ctx.textAlign='left';
+    ctx.fillText('Вертикальная скорость: '+(ship.vy/10).toFixed(1),30,68);
+    ctx.fillText('Боковая скорость: '+(ship.vx/10).toFixed(1),30,91);
+    ctx.fillStyle='#2a3c57';roundedRect(30,99,175,7,4);
+    ctx.fillStyle=ship.fuel<ship.maxFuel*.25?'#ff625f':'#48d6a1';roundedRect(30,99,175*Math.max(0,ship.fuel/ship.maxFuel),7,4);
+    if(status!=='flying'){
+      ctx.fillStyle='#020817dd';roundedRect(W/2-210,H/2-65,420,130,18);
+      ctx.textAlign='center';ctx.fillStyle=status==='landed'?'#77ffc0':'#ff8585';ctx.font='bold 30px Arial';
+      ctx.fillText(status==='landed'?'ПОСАДКА УСПЕШНА!':'КОРАБЛЬ ПОТЕРЯН',W/2,H/2-15);
+      ctx.fillStyle='#fff';ctx.font='18px Arial';ctx.fillText(status==='landed'?'+ монеты начислены':'Взрыв! Корабль уничтожен',W/2,H/2+20);
+      ctx.font='14px Arial';ctx.fillText(status==='landed'?'Выбери: продолжить или повторить этот уровень':'Нажми «Повторить попытку», чтобы снова взлететь',W/2,H/2+45);
+    }
+  }
+  function groundAt(x){
+    if(x>=pad.x && x<=pad.x+pad.w)return pad.y;
+    let prev=terrain[0];
+    for(let i=1;i<terrain.length;i++){const p=terrain[i];if(x<=p.x){const t=(x-prev.x)/(p.x-prev.x||1);return prev.y+(p.y-prev.y)*t;}prev=p;}
+    return groundY;
+  }
+  function spawnExplosion(x,y){
+    for(let i=0;i<52;i++){const a=Math.random()*Math.PI*2, speed=45+Math.random()*210; explosions.push({x,y,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,life:.45+Math.random()*.8,maxLife:.45+Math.random()*.8,size:2+Math.random()*5,color:['#fff5b0','#ffb02e','#ff633d','#e9f4ff'][Math.floor(Math.random()*4)]});}
+  }
+  function drawExplosions(dt){
+    for(const e of explosions){ctx.globalAlpha=Math.max(0,e.life/e.maxLife);ctx.fillStyle=e.color;ctx.shadowColor=e.color;ctx.shadowBlur=12;ctx.beginPath();ctx.arc(e.x,e.y,e.size*Math.max(.25,e.life/e.maxLife),0,Math.PI*2);ctx.fill();}
+    ctx.globalAlpha=1;ctx.shadowBlur=0;
+  }
+  function update(dt){
+    elapsed+=dt; updateBots(dt); maybeFinishTournamentRound();
+    for(const e of explosions){e.x+=e.vx*dt;e.y+=e.vy*dt;e.vx*=Math.pow(.35,dt);e.vy=e.vy*Math.pow(.35,dt)+35*dt;e.life-=dt;}
+    explosions=explosions.filter(e=>e.life>0);
+    if(status!=='flying')return;
+    const left=keys.arrowleft||keys.a, right=keys.arrowright||keys.d, thrust=keys[' ']||keys.arrowup||keys.w;
+    const model=currentModel();
+    ship.thrust=!!thrust&&ship.fuel>0;
+    // Speeds are in pixels/second. The previous version multiplied movement by dt twice,
+    // making left/right almost impossible to notice.
+    const sideAccel=250*model.side;
+    if(left)ship.vx-=sideAccel*dt;
+    if(right)ship.vx+=sideAccel*dt;
+    ship.vx*=Math.pow(.90,dt);
+    ship.vx=Math.max(-155,Math.min(155,ship.vx));
+    const gravity=85;
+    ship.vy+=gravity*dt;
+    if(ship.thrust){ship.vy-=(175*model.thrust+save.engine*25)*dt;ship.fuel-= (7+save.engine)*dt;ship.fuel=Math.max(0,ship.fuel);}
+    ship.vy=Math.max(-190,Math.min(210,ship.vy));
+    ship.x+=ship.vx*dt;
+    ship.y+=ship.vy*dt;
+    ship.x=Math.max(22,Math.min(W-22,ship.x));
+    // Meteorites get faster as levels rise. A collision ends the flight.
+    if(meteors){
+      for(const m of meteors){
+        m.x+=m.vx*dt;m.y+=m.vy*dt;m.spin+=m.spinV*dt;
+        if(m.x<-35){m.x=W+25;} if(m.x>W+35){m.x=-25;}
+        if(m.y>390){m.y=55+Math.random()*180;}
+        const dx=ship.x-m.x,dy=ship.y-m.y;
+        if(dx*dx+dy*dy<(m.r+15)*(m.r+15)){spawnExplosion(ship.x,ship.y);status='crashed';ship.thrust=false;if(tournament.active){tournament.playerDone=true;setMessage('💥 Метеорит разбил корабль. Ждём, пока боты закончат раунд.');}else setMessage('💥 Метеорит разбил корабль! Нажми «Повторить попытку», чтобы попробовать снова.');showOutcomeButtons();maybeFinishTournamentRound();return;}
+      }
+    }
+    const bottom=ship.y+22, ground=groundAt(ship.x);
+    if(bottom>=ground){
+      const onPad=ship.x>pad.x+12&&ship.x<pad.x+pad.w-12;
+      const soft=ship.vy<55&&Math.abs(ship.vx)<45;
+      if(onPad&&soft){
+        const oldLevel=levelNow();status='landed';if(tournament.active){tournament.playerDone=true;registerTournamentLanding('Ты');}save.landings++;const reward=20+Math.round(Math.max(0,20-Math.abs(ship.vx)/5-Math.max(0,ship.vy)/12));save.coins+=reward;persist();
+        setMessage('Отлично! Мягкая посадка: +'+reward+' монет. '+(levelNow()>oldLevel?'Открыт уровень '+levelNow()+' — опасность возросла!':'Покупай новые корабли и лети снова.')); showOutcomeButtons();
+        $('message').textContent=message;
+      } else if(save.hull>0 && onPad && ship.vy<95 && Math.abs(ship.vx)<75){
+        status='landed';if(tournament.active){tournament.playerDone=true;registerTournamentLanding('Ты');}save.landings++;const reward=12;save.coins+=reward;persist();setMessage('Жёсткая, но успешная посадка благодаря корпусу! +12 монет.');showOutcomeButtons();
+      } else {
+        status='crashed';spawnExplosion(ship.x,ground-10);if(tournament.active){tournament.playerDone=true;setMessage('💥 Посадка не удалась. Ждём, пока боты закончат раунд.');}else setMessage(onPad?'💥 Слишком жёсткое касание! Нажми «Повторить попытку».':'💥 Ты промахнулся мимо площадки! Нажми «Повторить попытку».');showOutcomeButtons();
+      }
+      ship.y=ground-22;ship.vy=0;ship.vx=0;ship.thrust=false;
+    }
+    updateUI();
+  }
+  function killBot(b, x=b.x, y=b.y, reason='разбился'){
+    if(!b.alive)return;
+    spawnExplosion(x,y); b.alive=false; b.landed=false; b.respawnTimer=2.4; b.vx=0; b.vy=0;
+    b.deathReason=reason;
+  }
+  function updateBots(dt){
+    for(const b of bots){
+      b.phase+=dt;
+      if(!b.alive){
+        b.respawnTimer-=dt;
+        if(b.respawnTimer<=0){
+          b.alive=true; b.landed=false; b.landTimer=0;
+          b.x=W*(.58+Math.random()*.25); b.y=65+Math.random()*45;
+          b.vx=(Math.random()-.5)*8; b.vy=0;
+        }
+        continue;
+      }
+      if(b.landed){
+        if(tournament.active)continue;
+        b.landTimer-=dt;
+        if(b.landTimer<=0){
+          b.landed=false;
+          b.x=W*(.58+Math.random()*.22); b.y=65+Math.random()*45;
+          b.vx=(Math.random()-.5)*8; b.vy=0;
+        }
+        continue;
+      }
+
+      // AI flight controller: steer toward a safe point on the pad, brake sideways,
+      // and use the engine to control descent instead of simply falling under gravity.
+      const targetX=pad.x+pad.w/2+(b.name==='Бот-Альфа'?-Math.min(15,pad.w*.16):Math.min(15,pad.w*.16));
+      const dx=targetX-b.x;
+      const desiredVx=Math.max(-48,Math.min(48,dx*0.8));
+      const vxError=desiredVx-b.vx;
+      b.vx+=Math.max(-95,Math.min(95,vxError*2.2))*dt;
+      b.vx*=Math.pow(.985,dt);
+      b.vx=Math.max(-55,Math.min(55,b.vx));
+
+      const ground=groundAt(b.x);
+      const altitude=Math.max(0,ground-(b.y+18));
+      // Approach quickly while high, then descend slowly near the ground/pad.
+      let desiredVy=altitude>180?42:(altitude>75?27:16);
+      if(Math.abs(dx)>pad.w*.65 && altitude<110) desiredVy=10;
+      b.vy+=85*dt;
+      // Thruster provides 175 px/s²: pulse it when falling too quickly or approaching the surface.
+      const brakeThreshold=desiredVy+(altitude<120?2:0);
+      if(b.vy>brakeThreshold){
+        b.vy-=Math.min(175*dt,(b.vy-desiredVy)*Math.min(1,dt*5));
+      } else if(altitude<85 && b.vy>desiredVy-5){
+        b.vy-=Math.min(175*dt,Math.max(0,b.vy-(desiredVy-5))*Math.min(1,dt*4));
+      }
+      b.vy=Math.max(-70,Math.min(65,b.vy));
+      b.x+=b.vx*dt;
+      b.y+=b.vy*dt;
+      if(b.x<20){b.x=20;b.vx=Math.max(0,b.vx);}
+      if(b.x>W-20){b.x=W-20;b.vx=Math.min(0,b.vx);}
+
+      // Same hazards as the human player: meteorite collisions can destroy bots.
+      if(meteors){
+        for(const m of meteors){
+          const mx=b.x-m.x,my=b.y-m.y;
+          if(mx*mx+my*my<(m.r+13)*(m.r+13)){killBot(b,b.x,b.y,'попал в метеорит');break;}
+        }
+      }
+      if(!b.alive)continue;
+      const surface=groundAt(b.x);
+      if(b.y+18>=surface){
+        const onPad=b.x>pad.x+8&&b.x<pad.x+pad.w-8;
+        const soft=b.vy<43&&Math.abs(b.vx)<32;
+        if(onPad&&soft){
+          b.y=pad.y-34; b.vy=0; b.vx=0; b.landed=true; b.landTimer=3.5+Math.random()*2.5;if(tournament.active)registerTournamentLanding(b.name);
+        } else {
+          killBot(b,b.x,surface-8,onPad?'жёстко приземлился':'промахнулся мимо площадки');
+        }
+      }
+    }
+  }
+  function drawBots(){
+    for(const b of bots){
+      if(!b.alive){ctx.save();ctx.globalAlpha=.9;ctx.fillStyle='#ffb05a';ctx.font='bold 12px Arial';ctx.textAlign='center';ctx.fillText('💥 '+b.name+' — возрождение',b.x,Math.max(25,b.y-20));ctx.restore();continue;}
+      ctx.save();ctx.translate(b.x,b.y);ctx.rotate(Math.max(-.25,Math.min(.25,b.vx*.004)));ctx.fillStyle=b.color;ctx.strokeStyle='#e9ffff';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(0,-17);ctx.lineTo(10,8);ctx.lineTo(0,5);ctx.lineTo(-10,8);ctx.closePath();ctx.fill();ctx.stroke();ctx.fillStyle='#d8ffff';ctx.beginPath();ctx.ellipse(0,-5,3.5,4.5,0,0,Math.PI*2);ctx.fill();if(!b.landed){ctx.fillStyle='#ffbd65';ctx.beginPath();ctx.moveTo(-3,8);ctx.lineTo(0,15+Math.random()*5);ctx.lineTo(3,8);ctx.closePath();ctx.fill();}ctx.restore();ctx.fillStyle='#ffffff';ctx.font='bold 11px Arial';ctx.textAlign='center';ctx.fillText(b.name+(b.landed?' · посадка':''),b.x,b.y-24);
+    }
+  }
+  function drawRemotePlayers(){
+    for(const player of Object.values(remotePlayers)){
+      if(!player || player.id===myPlayerId || typeof player.x!=='number' || typeof player.y!=='number')continue;
+      ctx.save();ctx.translate(player.x,player.y);ctx.rotate(Number(player.angle)||0);
+      ctx.fillStyle=player.color||'#64e8ff';ctx.strokeStyle='#eafaff';ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(0,-22);ctx.lineTo(12,11);ctx.lineTo(0,7);ctx.lineTo(-12,11);ctx.closePath();ctx.fill();ctx.stroke();
+      ctx.fillStyle='#bff8ff';ctx.beginPath();ctx.ellipse(0,-7,4,6,0,0,Math.PI*2);ctx.fill();ctx.restore();
+      ctx.fillStyle='#fff';ctx.font='bold 13px Arial';ctx.textAlign='center';ctx.fillText(String(player.name||'Пилот').slice(0,18),player.x,player.y-31);
+    }
+  }
+  function renderNetworkPlayers(players){
+    remotePlayers={};(players||[]).forEach(p=>{remotePlayers[p.id]=p;});
+    netPlayers.innerHTML='';
+    const list=Object.values(remotePlayers);
+    list.forEach(p=>{const tag=document.createElement('span');tag.className='net-player';tag.textContent=(p.id===myPlayerId?'🟢 ':'🚀 ')+(p.name||'Пилот');netPlayers.appendChild(tag);});
+    if(roomCode)networkMessage('Комната '+roomCode+' · игроков '+list.length+'/8. Отправь код друзьям.');
+  }
+  function ensureSocket(){
+    if(socket)return socket;
+    if(typeof io!=='function'){networkMessage('Сетевой сервер не найден. Открой игру по адресу опубликованного сайта, а не как локальный HTML-файл.');return null;}
+    socket=io();
+    socket.on('connect',()=>{networkMessage('Подключено к серверу. Создай комнату или введи код.');});
+    socket.on('connect_error',()=>networkMessage('Не удалось подключиться. Проверь адрес сайта и интернет-соединение.'));
+    socket.on('room-joined',data=>{
+      roomCode=data.code;myPlayerId=data.you;sharedSeed=data.seed||0;$('roomCode').value=roomCode;
+      $('createRoom').disabled=true;$('joinRoom').disabled=true;$('leaveRoom').disabled=false;
+      renderNetworkPlayers(data.players||[]);newFlight(true);
+    });
+    socket.on('room-state',data=>renderNetworkPlayers(data.players||[]));
+    socket.on('player-update',player=>{if(player&&player.id!==myPlayerId)remotePlayers[player.id]=player;});
+    socket.on('player-left',data=>{if(data&&data.id)delete remotePlayers[data.id];renderNetworkPlayers(Object.values(remotePlayers));});
+    socket.on('world-reset',data=>{if(data&&data.seed){sharedSeed=data.seed;newFlight(true);}});
+    socket.on('room-error',data=>networkMessage((data&&data.message)||'Не удалось войти в комнату.'));
+    socket.on('disconnect',()=>networkMessage('Соединение потеряно. Попробуй обновить страницу.'));
+    return socket;
+  }
+  $('createRoom').onclick=()=>{const s=ensureSocket();if(!s)return;s.emit('create-room',{name:$('nickname').value.trim()||'Пилот'});};
+  $('joinRoom').onclick=()=>{const s=ensureSocket();if(!s)return;const code=$('roomCode').value.trim().toUpperCase();if(!code){networkMessage('Введи код комнаты.');return;}s.emit('join-room',{code,name:$('nickname').value.trim()||'Пилот'});};
+  $('leaveRoom').onclick=()=>{if(socket&&roomCode)socket.emit('leave-room',{roomCode});roomCode='';myPlayerId='';sharedSeed=0;remotePlayers={};netPlayers.innerHTML='';$('createRoom').disabled=false;$('joinRoom').disabled=false;$('leaveRoom').disabled=true;networkMessage('Ты вышел из комнаты.');};
+  function frame(t){
+    const dt=Math.min(.04,(t-lastTime)/1000||0);lastTime=t;
+    update(dt);drawBackground();drawBots();drawShip();drawExplosions(dt);drawRemotePlayers();drawHUD();
+    if(socket&&socket.connected&&roomCode&&t-lastNetworkSend>100){lastNetworkSend=t;socket.emit('player-update',{roomCode,name:$('nickname').value.trim()||'Пилот',x:ship.x,y:ship.y,angle:ship.angle,color:currentModel().accent,status});}
+    requestAnimationFrame(frame);
+  }
+  updateTournamentUI();newFlight();requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
