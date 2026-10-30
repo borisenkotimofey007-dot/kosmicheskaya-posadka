@@ -7,13 +7,16 @@
 <style>
   :root { color-scheme: dark; }
   * { box-sizing: border-box; }
-  body { margin:0; background:#050b19; color:#eef5ff; font-family:Arial,Helvetica,sans-serif; }
-  .wrap { max-width:1100px; margin:0 auto; padding:14px; }
+  body { margin:0; background:radial-gradient(ellipse at 50% 0%,#142d58 0%,#070d20 48%,#030611 100%); color:#eef5ff; font-family:Arial,Helvetica,sans-serif; }
+  .wrap { max-width:1160px; margin:0 auto; padding:18px; }
   header { display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap; margin-bottom:10px; }
-  h1 { font-size:clamp(22px,4vw,34px); margin:0; letter-spacing:.4px; }
+  h1 { font-size:clamp(22px,4vw,36px); margin:0; letter-spacing:.6px; background:linear-gradient(90deg,#fff,#9ee8ff 48%,#bba7ff); color:transparent; background-clip:text; filter:drop-shadow(0 0 14px #4db9ff55); }
   .stats { display:flex; gap:8px; flex-wrap:wrap; }
-  .pill { background:#111e36; border:1px solid #263b60; padding:9px 12px; border-radius:12px; font-weight:bold; }
-  canvas { display:block; width:100%; height:auto; aspect-ratio:16/9; border:1px solid #29456c; border-radius:16px; background:#08152b; box-shadow:0 10px 35px #0008; }
+  #fullscreenToggle { white-space:nowrap; }
+  @media(max-width:720px){ #fullscreenToggle{width:100%;} }
+  .pill { background:linear-gradient(145deg,#172b4bdf,#091326f2); border:1px solid #45638b88; padding:10px 13px; border-radius:13px; font-weight:bold; box-shadow:inset 0 1px #ffffff12,0 6px 18px #0004; backdrop-filter:blur(8px); }
+  canvas.wide-view { transform:scale(1.025); transform-origin:center center; }
+  canvas { display:block; width:100%; height:auto; aspect-ratio:16/9; border:1px solid #75caff66; border-radius:18px; background:#08152b; box-shadow:0 0 0 1px #101e3c,0 0 30px #168bff24,0 18px 48px #0009; }
   .game-stage { position:relative; }
   #outcomePanel { position:absolute; left:50%; top:67%; transform:translate(-50%,-50%); width:max-content; max-width:95%; margin:0 !important; padding:0; background:transparent; border:0; box-shadow:none; text-align:center; pointer-events:none; }
   #outcomePanel #message { display:none; }
@@ -26,22 +29,28 @@
   .scoreboard { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
   .score-chip { background:#071226; border:1px solid #29456c; border-radius:9px; padding:8px 10px; }
   .below { display:grid; grid-template-columns:1.2fr .8fr; gap:12px; margin-top:12px; }
-  .panel { background:#0c162a; border:1px solid #203656; border-radius:14px; padding:14px; }
+  .panel { background:linear-gradient(145deg,#101e35f5,#091323f7); border:1px solid #34507799; border-radius:16px; padding:16px; box-shadow:inset 0 1px #ffffff0b,0 10px 28px #0003; }
   .panel h2 { margin:0 0 9px; font-size:18px; }
   p { color:#b9c9e4; line-height:1.45; margin:7px 0; }
   .buttons { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
   #continueLevel { background:#159765; } #retryFlight { background:#c43d52; }
-  button { background:#1d69d8; color:white; border:0; border-radius:10px; padding:10px 13px; font-weight:bold; cursor:pointer; }
-  button:hover { filter:brightness(1.14); }
+  button { background:linear-gradient(135deg,#287df1,#5b55e8); color:white; border:1px solid #ffffff24; border-radius:11px; padding:11px 14px; font-weight:bold; cursor:pointer; box-shadow:0 5px 15px #164fbd35,inset 0 1px #ffffff33; transition:transform .15s,filter .15s,box-shadow .15s; }
+  button:hover { filter:brightness(1.17); transform:translateY(-1px); box-shadow:0 8px 22px #164fbd55; }
   button:disabled { background:#334158; color:#8796ad; cursor:not-allowed; }
   .upgrade { display:flex; justify-content:space-between; gap:10px; align-items:center; padding:10px 0; border-top:1px solid #203656; }
   .upgrade:first-of-type { border-top:0; }
   .upgrade small { display:block; color:#9fb2d0; margin-top:4px; }
   .upgrade button { white-space:nowrap; }
-  .mobile { display:none; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:10px; }
-  .mobile button { min-height:48px; touch-action:none; }
+  .mobile { display:none; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:10px;
+    -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
+  .mobile button { min-height:54px; touch-action:none; -webkit-user-select:none; user-select:none;
+    -webkit-touch-callout:none; -webkit-tap-highlight-color:transparent; }
+  .mobile button:active { transform:scale(.97); filter:brightness(1.2); }
+  /* Prevent long-press text selection/copy menus on the on-screen flight controls. */
+  #left, #thrust, #right { -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;
+    -webkit-tap-highlight-color:transparent; touch-action:none; }
   .ship-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
-  .ship-card { border:1px solid #263b60; border-radius:12px; padding:12px; background:#0a1324; }
+  .ship-card { border:1px solid #345077; border-radius:14px; padding:14px; background:linear-gradient(145deg,#12213a,#08111f); box-shadow:inset 0 1px #ffffff0c; }
   .ship-card strong { display:block; margin-bottom:5px; }
   .ship-card p { font-size:13px; margin:5px 0 10px; }
   .ship-card button { width:100%; }
@@ -51,6 +60,8 @@
   .net-status { font-size:14px; color:#a9c5e9; }
   .net-players { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
   .net-player { padding:5px 8px; border:1px solid #29456c; border-radius:8px; background:#09172b; font-size:13px; }
+  .pause-overlay{position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;padding:18px;background:#020817cc;backdrop-filter:blur(8px)}
+  .pause-overlay.open{display:flex}.pause-card{width:min(430px,100%);padding:24px;border:1px solid #6ebeff77;border-radius:20px;background:linear-gradient(145deg,#142744,#07101f);box-shadow:0 20px 80px #000b;text-align:center}.pause-card h2{font-size:28px;margin:0 0 8px}.pause-card p{margin:8px 0 18px}.pause-actions{display:grid;gap:10px}.pause-actions button{width:100%}.pause-small{font-size:12px;color:#8fa9ce}
   @media(max-width:720px) { .below { grid-template-columns:1fr; } .mobile { display:grid; } .wrap {padding:9px;} }
 </style>
 </head>
@@ -63,7 +74,9 @@
       <div class="pill">⛽ Топливо: <span id="fuel">100</span>%</div>
       <div class="pill">🏆 Посадки: <span id="landings">0</span></div>
       <div class="pill">🌍 Уровень: <span id="level">1</span></div>
+      <div class="pill">⏱️ Время полёта: <span id="flightTimer">0:00.0</span></div>
     </div>
+    <button id="fullscreenToggle" type="button" title="Включить или выключить полный экран">⛶ Полный экран</button>
   </header>
   <div class="game-stage">
   <canvas id="game" width="960" height="540" aria-label="Игра про посадку космического корабля"></canvas>
@@ -86,12 +99,17 @@
     </div>
     <p class="hint" id="tournamentStatus">Турнир не запущен.</p>
     <div class="scoreboard" id="tournamentScores"></div>
+    <div class="stats" style="margin-top:12px">
+      <div class="pill">🏆 Рекорд посадки: <span id="bestLandingTime">—</span></div>
+      <div class="pill">🔥 Серия посадок: <span id="landingStreak">0</span></div>
+      <div class="pill">🥇 Максимальная серия: <span id="bestLandingStreak">0</span></div>
+    </div>
   </section>
   <section class="panel" style="margin-top:12px">
     <h2>🌐 Сетевая игра · до 8 игроков</h2>
     <p>Создай комнату и отправь друзьям её код. Чтобы играть через интернет, откройте игру по одному и тому же опубликованному адресу сайта.</p>
     <div class="net-row">
-      <input id="nickname" maxlength="18" placeholder="Твой ник" value="Пилот" aria-label="Ник игрока">
+      <input id="nickname" maxlength="18" placeholder="Твой ник" value="" aria-label="Ник игрока">
       <input id="roomCode" maxlength="5" placeholder="Код комнаты" aria-label="Код комнаты">
       <button id="createRoom">Создать комнату</button>
       <button id="joinRoom">Войти по коду</button>
@@ -100,6 +118,32 @@
     <p class="net-status" id="netStatus">Не подключено. Опубликуй игру с сервером, чтобы включить мультиплеер.</p>
     <div class="net-players" id="netPlayers"></div>
   </section>
+  <div class="pause-overlay" id="pauseOverlay" role="dialog" aria-modal="true" aria-labelledby="pauseTitle">
+    <div class="pause-card"><h2 id="pauseTitle">⏸ Пауза</h2><p id="pauseSubtitle">Полёт остановлен</p>
+      <div class="pause-actions">
+        <button id="resumeGame">▶ Вернуться к игре</button>
+        <button id="pauseSettings">⚙ Настройки</button>
+        <button id="pauseSave">💾 Сохранить игру</button>
+        <button id="pauseLoad">📂 Загрузить игру</button>
+      </div>
+      <p class="pause-small">Нажми Escape, чтобы вернуться в игру</p>
+    </div>
+  </div>
+  <div class="pause-overlay" id="settingsOverlay" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="pause-card"><h2 id="settingsTitle">⚙ Настройки</h2>
+      <label style="display:block;text-align:left;margin:16px 0 6px" for="settingsNickname">Имя над кораблём</label>
+      <input id="settingsNickname" maxlength="18" placeholder="Например, Космонавт" style="width:100%;box-sizing:border-box;margin-bottom:14px">
+      <label style="display:flex;align-items:center;gap:10px;justify-content:flex-start;margin:10px 0 16px"><input id="settingsSound" type="checkbox" checked> 🔊 Звук двигателя включён</label>
+      <h3 style="text-align:left;margin:10px 0 4px">⌨️ Управление</h3><p class="pause-small" style="text-align:left">Можно пользоваться стрелками ИЛИ буквами A/D/W. Также можно назначить свои клавиши ниже.</p>
+      <div class="key-bindings" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0 16px">
+        <button type="button" id="bindLeft">◀ Влево: ←</button>
+        <button type="button" id="bindRight">▶ Вправо: →</button>
+        <button type="button" id="bindThrust">▲ Двигатель: Пробел</button>
+        <button type="button" id="resetBindings">↺ Сбросить клавиши</button>
+      </div>
+      <div class="pause-actions"><button id="settingsContinue" hidden>▶ Продолжить / следующий уровень</button><button id="settingsRetry" hidden>↻ Повторить попытку</button><button id="saveSettings">💾 Сохранить настройки</button><button id="backFromSettings">← Назад к паузе</button></div>
+    </div>
+  </div>
   <div class="mobile">
     <button id="left">◀ Влево</button><button id="thrust">▲ Тяга</button><button id="right">Вправо</button>
   </div>
@@ -117,7 +161,7 @@
     <section class="panel">
       <h2>Как играть</h2>
       <p>Посади корабль на зелёную площадку на Земле. Не врезайся в землю и не касайся площадки слишком быстро!</p>
-      <p><b>← →</b> или <b>A / D</b> — двигаться в стороны. <b>Пробел</b> или <b>↑ / W</b> — включить двигатель. <b>R</b> — начать заново.</p>
+      <p><b>← →</b> или <b>A / D</b> — двигаться в стороны. <b>Пробел</b> или <b>↑ / W</b> — двигатель. <b>R</b> — начать заново. <b>F</b> — полный экран, <b>M</b> — звук, <b>C</b> — альтернативный рисунок корабля, <b>V</b> — немного приблизить вид.</p>
       <p>Мягкая посадка: снижай скорость двигателем и точно попадай на площадку. С каждым уровнем появляются новые опасности: метеориты, которые могут разбить корабль.</p>
       <div class="buttons">
         <button id="restart">↻ Перезапустить полёт</button>
@@ -140,11 +184,117 @@
 <script src="/socket.io/socket.io.js"></script>
 <script>
 (() => {
+  const $ = id => document.getElementById(id);
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
+  let paused=false;
+  let engineAudio=null, engineNoise=null, engineGain=null, soundMuted=false, alternateShipView=false;
+  function playExplosionSound(){
+    if(soundMuted) return;
+    try{
+      const AC=window.AudioContext||window.webkitAudioContext;
+      if(!AC) return;
+      if(!engineAudio) engineAudio=new AC();
+      const ac=engineAudio;
+      if(ac.state==='suspended') ac.resume();
+      const now=ac.currentTime;
+
+      // Controlled-volume explosive burst: a short sharp blast, turbulent
+      // crackle and a fading airy tail — not a heavy landing/impact thump.
+      const master=ac.createGain();
+      master.gain.setValueAtTime(.34,now);
+      master.connect(ac.destination);
+
+      // Explosive initial "whoosh-crack".
+      const len=Math.floor(ac.sampleRate*1.05);
+      const buf=ac.createBuffer(1,len,ac.sampleRate);
+      const data=buf.getChannelData(0);
+      for(let i=0;i<len;i++){
+        const t=i/ac.sampleRate;
+        const envelope=Math.exp(-t*3.9);
+        data[i]=(Math.random()*2-1)*envelope;
+      }
+      const burst=ac.createBufferSource();
+      const bp=ac.createBiquadFilter();
+      const burstGain=ac.createGain();
+      burst.buffer=buf;
+      bp.type='bandpass';
+      bp.frequency.setValueAtTime(1050,now);
+      bp.frequency.exponentialRampToValueAtTime(360,now+.78);
+      bp.Q.setValueAtTime(.65,now);
+      burstGain.gain.setValueAtTime(.0001,now);
+      burstGain.gain.exponentialRampToValueAtTime(.48,now+.012);
+      burstGain.gain.exponentialRampToValueAtTime(.0001,now+.92);
+      burst.connect(bp);bp.connect(burstGain);burstGain.connect(master);
+      burst.start(now);burst.stop(now+.96);
+
+      // A little bright debris/crackle layered into the blast.
+      const crackLen=Math.floor(ac.sampleRate*.24);
+      const crackBuf=ac.createBuffer(1,crackLen,ac.sampleRate);
+      const crackData=crackBuf.getChannelData(0);
+      for(let i=0;i<crackLen;i++) crackData[i]=(Math.random()*2-1)*(1-i/crackLen);
+      const crack=ac.createBufferSource(), crackFilter=ac.createBiquadFilter(), crackGain=ac.createGain();
+      crack.buffer=crackBuf;crackFilter.type='highpass';
+      crackFilter.frequency.setValueAtTime(900,now);
+      crackGain.gain.setValueAtTime(.0001,now);
+      crackGain.gain.exponentialRampToValueAtTime(.13,now+.006);
+      crackGain.gain.exponentialRampToValueAtTime(.0001,now+.23);
+      crack.connect(crackFilter);crackFilter.connect(crackGain);crackGain.connect(master);
+      crack.start(now);crack.stop(now+.25);
+
+      // Soft, short low-end bloom — deliberately not a bass-heavy thud.
+      const osc=ac.createOscillator(), lowGain=ac.createGain();
+      osc.type='sine';
+      osc.frequency.setValueAtTime(68,now+.015);
+      osc.frequency.exponentialRampToValueAtTime(38,now+.48);
+      lowGain.gain.setValueAtTime(.0001,now);
+      lowGain.gain.exponentialRampToValueAtTime(.17,now+.025);
+      lowGain.gain.exponentialRampToValueAtTime(.0001,now+.56);
+      osc.connect(lowGain);lowGain.connect(master);
+      osc.start(now);osc.stop(now+.58);
+
+      master.gain.setValueAtTime(.34,now);
+      master.gain.setValueAtTime(.34,now+.72);
+      master.gain.exponentialRampToValueAtTime(.0001,now+1.12);
+      setTimeout(()=>{try{master.disconnect();}catch(_){}},1400);
+    }catch(_){}
+  }
+  function syncEngineSound(){
+    if(!ship || !ship.thrust || status!=='flying' || paused || soundMuted){
+      if(engineGain && engineAudio) engineGain.gain.setTargetAtTime(0,engineAudio.currentTime,0.22);
+      return;
+    }
+    try{
+      if(!engineAudio){
+        const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
+        engineAudio=new AC();
+        // Airy, soft sci-fi propulsion: filtered noise rather than a persistent electronic tone.
+        const buffer=engineAudio.createBuffer(1,engineAudio.sampleRate*2,engineAudio.sampleRate);
+        const data=buffer.getChannelData(0);let last=0;
+        for(let i=0;i<data.length;i++){last=last*0.86+(Math.random()*2-1)*0.14;data[i]=last*3.2;}
+        engineNoise=engineAudio.createBufferSource();engineNoise.buffer=buffer;engineNoise.loop=true;
+        const filter=engineAudio.createBiquadFilter();filter.type='lowpass';filter.frequency.value=520;filter.Q.value=0.35;
+        const softTone=engineAudio.createBiquadFilter();softTone.type='highpass';softTone.frequency.value=95;softTone.Q.value=0.3;
+        engineGain=engineAudio.createGain();engineGain.gain.value=0;
+        engineNoise.connect(softTone);softTone.connect(filter);filter.connect(engineGain);engineGain.connect(engineAudio.destination);engineNoise.start();
+      }
+      if(engineAudio.state==='suspended')engineAudio.resume();
+      engineGain.gain.setTargetAtTime(0.12,engineAudio.currentTime,0.35);
+    }catch(e){}
+  }
+  async function toggleFullscreen(){try{if(document.fullscreenElement){await document.exitFullscreen();}else{const el=document.documentElement;if(el.requestFullscreen)await el.requestFullscreen();else if(el.webkitRequestFullscreen)el.webkitRequestFullscreen();} }catch(err){setMessage('Полный экран недоступен в этом режиме браузера. Нажми F или открой игру в обычной вкладке.');}}
+  $('fullscreenToggle').addEventListener('click',toggleFullscreen);
+  document.addEventListener('fullscreenchange',()=>{$('fullscreenToggle').textContent=document.fullscreenElement?'⛶ Выйти из полного экрана':'⛶ Полный экран';});
+  // Number is local to this browser profile; a shared global sequence needs a server.
+  let playerNumber;
+  try {
+    playerNumber=sessionStorage.getItem('spaceLandingPlayerNumber');
+    if(!playerNumber){let next=Number(localStorage.getItem('spaceLandingNextPlayerNumber')||1);if(!Number.isFinite(next)||next<1)next=1;playerNumber=String(next);localStorage.setItem('spaceLandingNextPlayerNumber',String(next+1));sessionStorage.setItem('spaceLandingPlayerNumber',playerNumber);}
+  } catch(e){playerNumber='1';}
+  const defaultPlayerName='Игрок '+playerNumber;
   const W=canvas.width,H=canvas.height, groundY=478;
-  const $ = id => document.getElementById(id);
-  const defaults = {coins:0,landings:0,hull:0,engine:0,tank:0,ownedShips:['scout'],selectedShip:'scout'};
+  $('nickname').value=defaultPlayerName;
+  const defaults = {coins:0,landings:0,hull:0,engine:0,tank:0,bestLandingTime:null,landingStreak:0,bestLandingStreak:0,ownedShips:['scout'],selectedShip:'scout'};
   const ships = [
     {id:'scout',name:'Разведчик',price:0,desc:'Стартовый корабль. Лёгкий и простой.',fuel:100,thrust:1,color:'#dce8f5',accent:'#2d8cda',side:1},
     {id:'comet',name:'Комета',price:500,desc:'Быстрый корабль с увеличенным баком.',fuel:145,thrust:1.25,color:'#e6f7ff',accent:'#36d9f5',side:1.2},
@@ -155,6 +305,8 @@
   try { save = {...defaults, ...JSON.parse(localStorage.getItem('spaceLandingSave')||'{}')}; }
   catch(e) { save={...defaults}; }
   if(!Array.isArray(save.ownedShips)) save.ownedShips=['scout'];
+  save.bestLandingTime=Number.isFinite(Number(save.bestLandingTime))&&save.bestLandingTime!==null?Number(save.bestLandingTime):null;
+  save.landingStreak=Math.max(0,Number(save.landingStreak)||0); save.bestLandingStreak=Math.max(save.landingStreak,Number(save.bestLandingStreak)||0);
   if(!save.ownedShips.includes('scout')) save.ownedShips.unshift('scout');
   if(!ships.some(s=>s.id===save.selectedShip) || !save.ownedShips.includes(save.selectedShip)) save.selectedShip='scout';
   function currentModel(){return ships.find(s=>s.id===save.selectedShip)||ships[0];}
@@ -176,12 +328,16 @@
     });
   }
   const keys = {};
-  let ship, terrain, pad, stars, meteors, bots=[], explosions=[], status, message, lastTime=0, elapsed=0;
+  let ship, terrain, pad, stars, meteors, bots=[], explosions=[], turrets=[], turretShots=[], turretCooldown=0, status, message, lastTime=0, elapsed=0, flightSeconds=0, windDirection=0, windStrength=0;
+  function formatTime(seconds){if(seconds===null||seconds===undefined||!Number.isFinite(seconds))return '—';const mins=Math.floor(seconds/60),secs=(seconds%60).toFixed(1).padStart(4,'0');return mins+':'+secs;}
+  function updateRecordsUI(){ $('flightTimer').textContent=formatTime(flightSeconds); $('bestLandingTime').textContent=formatTime(save.bestLandingTime); $('landingStreak').textContent=save.landingStreak||0; $('bestLandingStreak').textContent=save.bestLandingStreak||0; }
   let activeLevel = null;
+  let shipTemperature=0, marsOverheatTimer=0, topBoundaryTimer=0;
+  let weatherType='clear', weatherWind=0, lightningFlash=0, fogLevel=0;
   const tournament={active:false,totalLevels:10,currentLevel:1,points:{'Ты':0,'Бот-Альфа':0,'Бот-Браво':0},roundFinishOrder:[],playerDone:false,roundComplete:false};
   function updateTournamentUI(){
     const scores=$('tournamentScores'); scores.innerHTML='';
-    for(const name of ['Ты','Бот-Альфа','Бот-Браво']){
+    for(const name of ['Ты',...Array.from({length:7},(_,i)=>'Бот-'+String.fromCharCode(65+i))]){
       const chip=document.createElement('span');chip.className='score-chip';chip.textContent='🏆 '+name+': '+(tournament.points[name]||0)+' очк.';scores.appendChild(chip);
     }
     $('startTournament').hidden=tournament.active;
@@ -280,17 +436,29 @@
     $('hullBuy').disabled=save.coins<40+save.hull*35;
     $('engineBuy').disabled=save.coins<50+save.engine*45;
     $('tankBuy').disabled=save.coins<35+save.tank*30;
-    $('fuel').textContent=ship?Math.max(0,Math.ceil(ship.fuel/ship.maxFuel*100)):100;
+    $('fuel').textContent=ship?Math.max(0,Math.ceil(ship.fuel/ship.maxFuel*100)):100; updateRecordsUI();
   }
   function newFlight(fromNetwork=false, mode='next'){
     if(tournament.active && mode==='tournament') activeLevel=tournament.currentLevel;
     else if(mode==='next' || activeLevel===null) activeLevel=1+Math.floor(save.landings/2);
-    explosions=[]; $('continueLevel').hidden=true; $('retryFlight').hidden=true;
+    explosions=[]; turrets=[]; turretShots=[]; turretCooldown=2.5; flightSeconds=0; updateRecordsUI();
+    // Wind appears only on selected missions. Direction alternates and gusts vary slightly.
+    const windyLevels=[4,7,11,15,19,23,27,31,35,39,43,47];
+    windStrength=windyLevels.includes(levelNow()) ? 14+Math.min(12,Math.floor(levelNow()/5)*2) : 0;
+    windDirection=(Math.floor(levelNow()/4)%2===0)?1:-1;
+    $('continueLevel').hidden=true; $('retryFlight').hidden=true;
     terrain=[];
     // In a room, everyone uses the same seed so the landing zone and initial hazards match.
     const rnd=(roomCode && sharedSeed)?seededRandom(sharedSeed):Math.random;
-    let x=0; terrain.push({x:0,y:groundY});
-    while(x<W){ x+=25+rnd()*30; terrain.push({x:Math.min(x,W),y:groundY-rnd()*48}); }
+    // Smooth, gently rolling Earth terrain: no sharp spikes or deep gaps.
+    let x=0; terrain.push({x:0,y:groundY-10});
+    while(x<W){
+      x+=18+rnd()*14;
+      const xx=Math.min(x,W);
+      const broad=Math.sin(xx*.010+1.1)*8 + Math.sin(xx*.022+.6)*3;
+      const gentle=(rnd()-.5)*5;
+      terrain.push({x:xx,y:groundY-13-broad-gentle});
+    }
     // Platform changes position every flight, so the player must steer.
     const minPadX = W*0.40, maxPadX = W*0.76;
     pad={x:minPadX+rnd()*(maxPadX-minPadX),w:130,y:groundY-8};
@@ -300,15 +468,24 @@
     stars=Array.from({length:100},()=>({x:rnd()*W,y:rnd()*360,r:rnd()*1.7+.4,a:rnd()*.65+.25}));
     // More meteorites appear on later levels. Keep them away from the ship at the start.
     const level=levelNow();
+    const planetName=level>=36?'МАРС':level>=21?'ЛУНА':'ЗЕМЛЯ';
+    const weatherCycle=['clear','cloudy','rain','stormRain','thunder'];
+    weatherType=planetName==='ЛУНА'?'clear':planetName==='МАРС'?(level%3===0?'stormRain':'clear'):weatherCycle[Math.floor((level-1)/2)%weatherCycle.length];
+    weatherWind=weatherType==='stormRain'?130:weatherType==='thunder'?130:weatherType==='rain'?115:weatherType==='cloudy'?65:0;
+    windStrength=weatherWind;windDirection=(level%2===0)?1:-1;lightningFlash=0;
+    shipTemperature=planetName==='МАРС'?700:0; marsOverheatTimer=0; topBoundaryTimer=0;
     const meteorCount=level<2?0:Math.min(2+Math.floor(level/2),7);
-    meteors=Array.from({length:meteorCount},(_,i)=>({x:W*.43+rnd()*W*.55,y:70+rnd()*245,r:10+rnd()*9,vx:(rnd()<.5?-1:1)*(45+level*8+rnd()*35),vy:12+rnd()*20,spin:rnd()*6,spinV:(rnd()-.5)*2}));
+    meteors=Array.from({length:meteorCount},(_,i)=>({x:W*.43+rnd()*W*.55,y:70+rnd()*245,r:13+rnd()*8,vx:(rnd()<.5?-1:1)*(45+level*8+rnd()*35),vy:12+rnd()*20,spin:rnd()*6,spinV:(rnd()-.5)*2,trail:[]}));
     const model=currentModel();
     const maxFuel=model.fuel+save.tank*30;
     ship={x:W*.25,y:110,vx:0,vy:0,angle:0,fuel:maxFuel,maxFuel,thrust:false,flame:0,model:model.id};
-    // Friendly AI pilots fly their own ships and occasionally attempt a landing.
-    bots=Array.from({length:2},(_,i)=>({name:['Бот-Альфа','Бот-Браво'][i],x:W*(.68+i*.12),y:90+i*55,vx:0,vy:0,color:i?'#ff9866':'#68f0c1',phase:Math.random()*12,landed:false,landTimer:0,alive:true,respawnTimer:0}));
+    // After every five levels, add one more bot, up to seven at level 25.
+    const botCount=Math.min(7,2+Math.floor(Math.max(1,level)/5));
+    bots=Array.from({length:botCount},(_,i)=>({name:'Бот-'+String.fromCharCode(65+i),x:W*(.58+(i/(Math.max(1,botCount-1)))*.28),y:75+i*22,vx:0,vy:0,color:['#68f0c1','#ff9866','#d8a2ff','#ffe477','#7edbff','#ff83b5','#b8ff79'][i],phase:Math.random()*12,landed:false,landTimer:0,alive:true,respawnTimer:0}));
+    // Ground turrets unlock after level 10. They fire every four seconds.
+    if(level>=11){const count=Math.min(5,2+Math.floor((level-11)/5));turrets=Array.from({length:count},(_,i)=>({x:W*(.12+(i+1)*.76/(count+1)),flash:0}));}
     status='flying'; message='Миссия: выполни мягкую посадку!';
-    $('message').textContent='Уровень '+levelNow()+': '+(levelNow()<2?'первая тренировочная посадка.':'остерегайся метеоритов!'); updateUI(); renderShop();
+    $('message').textContent='Уровень '+levelNow()+' · '+(levelNow()>=36?'Марс: высокая температура! Посади корабль до перегрева.':levelNow()>=21?'Луна: слабая гравитация, управление непривычное.':(levelNow()<2?'первая тренировочная посадка.':'остерегайся метеоритов!'))+' Погода: '+({clear:'ясно',cloudy:'облачно',rain:'дождь',stormRain:'сильный ветер и дождь',thunder:'гроза, ветер и дождь'}[weatherType])+ (windStrength?' Ветер '+(windDirection>0?'→':'←')+' — держи курс!':''); updateUI(); renderShop();
     if(roomCode && socket && socket.connected && !fromNetwork){socket.emit('request-world-reset',{roomCode});}
   }
   function setMessage(t){message=t;$('message').textContent=t;}
@@ -327,7 +504,7 @@
       if(tournament.currentLevel<tournament.totalLevels){tournament.currentLevel++;startTournamentRound();}
       else{
         tournament.active=false;tournament.roundComplete=false;$('continueLevel').hidden=true;$('retryFlight').hidden=true;
-        const ranking=['Ты','Бот-Альфа','Бот-Браво'].sort((a,b)=>(tournament.points[b]||0)-(tournament.points[a]||0));
+        const ranking=['Ты',...bots.map(b=>b.name),...Array.from({length:7},(_,i)=>'Бот-'+String.fromCharCode(65+i))].filter((name,i,arr)=>arr.indexOf(name)===i).sort((a,b)=>(tournament.points[b]||0)-(tournament.points[a]||0));
         const summary=ranking.map((name,i)=>(i+1)+'. '+name+' — '+tournament.points[name]+' очк.').join(' · ');
         $('tournamentStatus').textContent='🏁 Турнир завершён! Итог: '+summary;setMessage('🏆 Турнир завершён! '+summary);updateTournamentUI();
       }
@@ -345,14 +522,84 @@
     $('retryFlight').hidden=!ended;
   }
   $('resetSave').onclick=()=>{if(confirm('Сбросить все монеты, посадки и улучшения?')){save={...defaults,ownedShips:['scout'],selectedShip:'scout'};persist();newFlight();}};
-  document.addEventListener('keydown',e=>{const k=e.key.toLowerCase();
-    if(k==='r'||e.code==='KeyR'){e.preventDefault();newFlight();keys.r=false;return;}
-    keys[k]=true;if([' ','arrowup','arrowleft','arrowright'].includes(k))e.preventDefault();
+  const keyBindings={left:'KeyA',right:'KeyD',thrust:'KeyW'};
+  try{
+    const savedBindings=JSON.parse(localStorage.getItem('spaceLandingKeyBindings')||'null');
+    if(savedBindings) for(const action of ['left','right','thrust']) if(typeof savedBindings[action]==='string') keyBindings[action]=savedBindings[action];
+  }catch(e){}
+  const keyNames={ArrowLeft:'←',ArrowRight:'→',ArrowUp:'↑',ArrowDown:'↓',Space:'Пробел',ShiftLeft:'Левый Shift',ShiftRight:'Правый Shift',ControlLeft:'Левый Ctrl',AltLeft:'Alt'};
+  const prettyKey=code=>keyNames[code]||code.replace(/^Key/,'').replace(/^Digit/,'');
+  let waitingForBinding=null;
+  function refreshBindingLabels(){
+    $('bindLeft').textContent='◀ Влево: '+prettyKey(keyBindings.left);
+    $('bindRight').textContent='▶ Вправо: '+prettyKey(keyBindings.right);
+    $('bindThrust').textContent='▲ Двигатель: '+prettyKey(keyBindings.thrust);
+  }
+  [['bindLeft','left'],['bindRight','right'],['bindThrust','thrust']].forEach(([id,action])=>{
+    $(id).onclick=()=>{waitingForBinding=action;$(id).textContent='Нажми клавишу…';};
   });
-  document.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
+  $('resetBindings').onclick=()=>{
+    keyBindings.left='KeyA';keyBindings.right='KeyD';keyBindings.thrust='KeyW';
+    localStorage.removeItem('spaceLandingKeyBindings');waitingForBinding=null;refreshBindingLabels();
+  };
+  refreshBindingLabels();
+  document.addEventListener('keydown',e=>{
+    const k=e.key.toLowerCase();
+    if(waitingForBinding){
+      if(['Escape','Tab'].includes(e.key)){waitingForBinding=null;refreshBindingLabels();e.preventDefault();return;}
+      e.preventDefault();e.stopImmediatePropagation();
+      keyBindings[waitingForBinding]=e.code;waitingForBinding=null;
+      try{localStorage.setItem('spaceLandingKeyBindings',JSON.stringify(keyBindings));}catch(_){}
+      refreshBindingLabels();return;
+    }
+    const typing=e.target && (e.target.matches('input,textarea,select') || e.target.isContentEditable);
+    if(typing)return;
+    if(e.code==='Escape'&&!e.repeat){e.preventDefault();setPaused(!paused);return;}
+    // Fullscreen and utility shortcuts also work while the pause menu is open.
+    if((e.code==='KeyF'||k==='f')&&!e.repeat){e.preventDefault();toggleFullscreen();return;}
+    if(paused)return;
+    if((e.code==='KeyM'||k==='m')&&!e.repeat){soundMuted=!soundMuted;syncEngineSound();setMessage(soundMuted?'🔇 Звук выключен':'🔊 Звук включён');return;}
+    if((e.code==='KeyC'||k==='c')&&!e.repeat){alternateShipView=!alternateShipView;return;}
+    if((e.code==='KeyV'||k==='v')&&!e.repeat){canvas.classList.toggle('wide-view');return;}
+    if(status!=='flying'&&!e.repeat&&e.code==='Backspace'){if(!$('retryFlight').hidden){e.preventDefault();$('retryFlight').click();return;}e.preventDefault();return;}
+    if(status!=='flying'&&!e.repeat&&e.code==='Enter'&&!$('continueLevel').hidden){e.preventDefault();$('continueLevel').click();return;}
+    if(e.code==='KeyR'&&!e.repeat){e.preventDefault();newFlight();return;}
+    if(e.code===keyBindings.left || e.code==='ArrowLeft' || e.code==='KeyA')keys.left=true;
+    if(e.code===keyBindings.right || e.code==='ArrowRight' || e.code==='KeyD')keys.right=true;
+    if(e.code===keyBindings.thrust || e.code==='Space' || e.code==='ArrowUp' || e.code==='KeyW')keys.thrust=true;
+    if([keyBindings.left,keyBindings.right,keyBindings.thrust,'Space','ArrowUp','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();
+  });
+  document.addEventListener('keyup',e=>{
+    if(e.code===keyBindings.left || e.code==='ArrowLeft' || e.code==='KeyA')keys.left=false;
+    if(e.code===keyBindings.right || e.code==='ArrowRight' || e.code==='KeyD')keys.right=false;
+    if(e.code===keyBindings.thrust || e.code==='Space' || e.code==='ArrowUp' || e.code==='KeyW')keys.thrust=false;
+  });
   window.addEventListener('blur',()=>{for(const k in keys)keys[k]=false;});
   canvas.tabIndex=0; canvas.addEventListener('pointerdown',()=>canvas.focus());
-  function holdButton(id,key){const b=$(id);const down=e=>{e.preventDefault();keys[key]=true;};const up=e=>{e.preventDefault();keys[key]=false;};b.addEventListener('pointerdown',down);b.addEventListener('pointerup',up);b.addEventListener('pointerleave',up);b.addEventListener('pointercancel',up);}
+  function holdButton(id,key){
+    const b=$(id);
+    const mapped=key==='arrowleft'?'left':key==='arrowright'?'right':'thrust';
+    const down=e=>{
+      if(e.button!==undefined && e.button!==0) return;
+      e.preventDefault();
+      keys[key]=true; keys[mapped]=true;
+      // Keep receiving the finger's events even if it drifts outside the button.
+      if(b.setPointerCapture && e.pointerId!==undefined){
+        try{b.setPointerCapture(e.pointerId);}catch(_){}
+      }
+    };
+    const up=e=>{
+      if(e) e.preventDefault();
+      keys[key]=false; keys[mapped]=false;
+    };
+    b.addEventListener('contextmenu',e=>e.preventDefault());
+    b.addEventListener('selectstart',e=>e.preventDefault());
+    b.addEventListener('dragstart',e=>e.preventDefault());
+    b.addEventListener('pointerdown',down,{passive:false});
+    b.addEventListener('pointerup',up,{passive:false});
+    b.addEventListener('pointercancel',up,{passive:false});
+    b.addEventListener('lostpointercapture',up);
+  }
   holdButton('left','arrowleft');holdButton('right','arrowright');holdButton('thrust',' ');
   // Compatibility: draw rounded rectangles without relying on CanvasRenderingContext2D.roundRect.
   function roundedRect(x,y,w,h,r){
@@ -361,47 +608,226 @@
     ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);
     ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();ctx.fill();
   }
+  function drawWeatherEffects(){
+    const cloudCount=weatherType==='clear'?0:weatherType==='cloudy'?5:weatherType==='rain'?6:8;
+    // Soft layered clouds drift across the sky.
+    if(cloudCount){
+      ctx.save();
+      for(let i=0;i<cloudCount;i++){
+        const speed=weatherType==='thunder'?22:weatherType==='stormRain'?17:9;
+        const x=((i*197+elapsed*speed)%(W+220))-110;
+        const y=55+(i%4)*42;
+        const shade=(weatherType==='thunder'||weatherType==='stormRain')?'#354052':'#e5f0f5';
+        ctx.globalAlpha=(weatherType==='thunder'||weatherType==='stormRain')?.72:.58;
+        ctx.fillStyle=shade;
+        ctx.beginPath();
+        ctx.ellipse(x,y,43,17,0,0,Math.PI*2);
+        ctx.ellipse(x-27,y+5,28,13,0,0,Math.PI*2);
+        ctx.ellipse(x+25,y+6,31,14,0,0,Math.PI*2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+    // Rain streaks, with stronger diagonal wind in storm conditions.
+    if(weatherType==='rain'||weatherType==='stormRain'||weatherType==='thunder'){
+      const intensity=weatherType==='rain'?70:weatherType==='stormRain'?125:105;
+      ctx.save();ctx.strokeStyle=weatherType==='rain'?'#d8efff88':'#d9eaffaa';
+      ctx.lineWidth=weatherType==='rain'?1:1.5;
+      for(let i=0;i<intensity;i++){
+        const x=(i*83+elapsed*(weatherWind*2+65)*windDirection)%(W+50);
+        const xx=(x+W+50)%(W+50)-20;
+        const y=(i*47+elapsed*330)%(H-100);
+        const slant=weatherType==='rain'?5:weatherType==='stormRain'?19:14;
+        ctx.beginPath();ctx.moveTo(xx,y);ctx.lineTo(xx-slant*windDirection,y+15);ctx.stroke();
+      }
+      ctx.restore();
+    }
+    // Occasional lightning flash and forked bolt during thunderstorms.
+    if(weatherType==='thunder'){
+      const pulse=(Math.sin(elapsed*1.7+1.2)+Math.sin(elapsed*.63))>1.72;
+      if(pulse){
+        ctx.save();ctx.fillStyle='#dceaff22';ctx.fillRect(0,0,W,H);
+        ctx.strokeStyle='#e7f5ff';ctx.lineWidth=3;ctx.shadowColor='#b9dfff';ctx.shadowBlur=18;
+        const lx=W*(.22+(.5+.5*Math.sin(elapsed*.37))*.58);
+        ctx.beginPath();ctx.moveTo(lx,40);ctx.lineTo(lx-17,78);ctx.lineTo(lx+4,91);ctx.lineTo(lx-23,137);ctx.stroke();
+        ctx.restore();
+      }
+    }
+  }
   function drawBackground(){
     const cycle=(elapsed%100)/100; const phase=cycle<.25?'Ночь':cycle<.42?'Рассвет':cycle<.68?'День':cycle<.84?'Закат':'Сумерки';
     let top='#050a20',mid='#102c55',bottom='#244b72';
+    const world=levelNow()>=36?'МАРС':levelNow()>=21?'ЛУНА':'ЗЕМЛЯ';
+    if(world==='ЛУНА'){top='#070d1c';mid='#29364b';bottom='#667080';}
+    if(world==='МАРС'){top='#180b12';mid='#693126';bottom='#bd6844';}
     if(phase==='Рассвет'){top='#30234c';mid='#b65f67';bottom='#e9a66d';} else if(phase==='День'){top='#2875b6';mid='#65b8dc';bottom='#b6e4d3';} else if(phase==='Закат'){top='#241d50';mid='#b95d6c';bottom='#f3a15e';} else if(phase==='Сумерки'){top='#101a3e';mid='#56436f';bottom='#8c6579';}
     const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,top);g.addColorStop(.65,mid);g.addColorStop(1,bottom);ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+    // Atmospheric sky: no distant planet or space stars on planetary levels.
     // Sun or moon follows the day/night cycle.
     const celestialX=110+cycle*740, celestialY=phase==='День'?105:phase==='Рассвет'||phase==='Закат'?260:90; ctx.save();ctx.globalAlpha=phase==='Ночь'?.9:1;ctx.fillStyle=phase==='Ночь'?'#e5f1ff':'#ffe6a1';ctx.shadowColor=ctx.fillStyle;ctx.shadowBlur=phase==='День'?16:28;ctx.beginPath();ctx.arc(celestialX,celestialY,phase==='Ночь'?18:25,0,Math.PI*2);ctx.fill();ctx.restore();
-    ctx.fillStyle='#ffffffcc';ctx.font='bold 13px Arial';ctx.textAlign='right';ctx.fillText('☀ '+phase,W-18,52);
-    for(const s of stars){ctx.globalAlpha=s.a*(.8+.2*Math.sin(elapsed*2+s.x));ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill();}
-    ctx.globalAlpha=1;
-    // Earth horizon
-    const eg=ctx.createLinearGradient(0,390,0,500);eg.addColorStop(0,'#3fbd83');eg.addColorStop(.3,'#247b5e');eg.addColorStop(1,'#153c42');
-    ctx.fillStyle=eg;ctx.beginPath();ctx.moveTo(0,groundY);
-    terrain.forEach(p=>ctx.lineTo(p.x,p.y));ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.closePath();ctx.fill();
-    // Landing pad is drawn after the terrain silhouettes so it can never get hidden behind them.
-    // Meteorites are drawn as glowing rocky hazards.
-    if(meteors) for(const m of meteors){
-      ctx.save();ctx.translate(m.x,m.y);ctx.rotate(m.spin);
-      const glow=ctx.createRadialGradient(0,0,2,0,0,m.r*1.9);glow.addColorStop(0,'#ffb15c88');glow.addColorStop(1,'#ff5a2a00');ctx.fillStyle=glow;ctx.beginPath();ctx.arc(0,0,m.r*1.9,0,Math.PI*2);ctx.fill();
-      ctx.fillStyle='#8d5548';ctx.beginPath();ctx.moveTo(-m.r*.9,-m.r*.2);ctx.lineTo(-m.r*.55,-m.r*.85);ctx.lineTo(m.r*.15,-m.r);ctx.lineTo(m.r*.8,-m.r*.45);ctx.lineTo(m.r,.25*m.r);ctx.lineTo(m.r*.35,m.r*.85);ctx.lineTo(-m.r*.55,m.r*.7);ctx.closePath();ctx.fill();
-      ctx.fillStyle='#e9a06d';ctx.beginPath();ctx.arc(-m.r*.25,-m.r*.25,m.r*.22,0,Math.PI*2);ctx.fill();ctx.restore();
+    ctx.fillStyle='#ffffffcc';ctx.font='bold 13px Arial';ctx.textAlign='right';const weatherLabel={clear:'ЯСНО',cloudy:'ОБЛАЧНО',rain:'ДОЖДЬ',stormRain:'ШТОРМ',thunder:'ГРОЗА'}[weatherType];
+    ctx.fillText('☀ '+phase+' · '+weatherLabel,W-18,52);
+    if(windStrength){
+      const arrow=windDirection>0?'→':'←';
+      ctx.fillStyle='#071226cc';roundedRect(W-190,66,170,35,9);
+      ctx.fillStyle='#b8e8ff';ctx.font='bold 15px Arial';ctx.textAlign='center';ctx.fillText('💨 ВЕТЕР '+arrow+' '+Math.round(windStrength),W-105,88);
+      // Animated wind streaks make the force visible.
+      ctx.save();ctx.strokeStyle='#b8e8ff88';ctx.lineWidth=2;
+      for(let i=0;i<(windStrength>=200?18:windStrength>=100?13:9);i++){const x=((elapsed*(windStrength*2+90)*windDirection+i*117)%(W+100)+W+100)%(W+100);const y=115+(i*53)%(H-145);ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x-(windStrength>=200?65:windStrength>=100?45:30)*windDirection,y);ctx.stroke();}
+      ctx.restore();
     }
-    // distant mountain silhouettes
-    ctx.fillStyle='#1a624e';ctx.beginPath();ctx.moveTo(0,groundY+8);for(let x=0;x<=W;x+=45)ctx.lineTo(x,groundY-15-Math.sin(x*.018)*20);ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.closePath();ctx.fill();
+    ctx.globalAlpha=1;
+    drawWeatherEffects();
+    // Natural Earth ground: smooth grassy surface, rich soil and restrained texture.
+    // Terrain geometry is unchanged, so landing physics remain exactly the same.
+    const groundPath=()=>{ctx.beginPath();ctx.moveTo(0,terrain[0]?.y??groundY);terrain.forEach(p=>ctx.lineTo(p.x,p.y));ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.closePath();};
+    ctx.save();groundPath();ctx.clip();
+    const soil=ctx.createLinearGradient(0,groundY,0,H);
+    if(levelNow()>=36){soil.addColorStop(0,'#b96a48');soil.addColorStop(.035,'#8e4936');soil.addColorStop(.10,'#74402f');soil.addColorStop(.25,'#63372d');soil.addColorStop(.58,'#492c29');soil.addColorStop(1,'#2d2023');}
+    else if(levelNow()>=21){soil.addColorStop(0,'#aeb6c2');soil.addColorStop(.035,'#7f8998');soil.addColorStop(.10,'#626c7b');soil.addColorStop(.25,'#4b5666');soil.addColorStop(.58,'#333d4c');soil.addColorStop(1,'#202936');}
+    else {soil.addColorStop(0,'#4c8e3d');soil.addColorStop(.035,'#397735');soil.addColorStop(.10,'#6e5134');soil.addColorStop(.25,'#60442f');soil.addColorStop(.58,'#49372b');soil.addColorStop(1,'#332d29');}
+    ctx.fillStyle=soil;ctx.fillRect(0,groundY-8,W,H-groundY+8);
+    // Broad, gently curved layers in the soil rather than sharp graphic stripes.
+    for(let band=0;band<4;band++){
+      ctx.beginPath();
+      for(let x=0;x<=W;x+=18){const y=groundY+20+band*31+Math.sin(x*.009+band*1.8)*4+Math.sin(x*.021+band)*2;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);}
+      ctx.strokeStyle=['#9b754a55','#302a2455','#b18a5b44','#30282144'][band];ctx.lineWidth=band===1?4:2;ctx.stroke();
+    }
+    // Tiny soil grains, placed deterministically so they do not flicker between frames.
+    for(let i=0;i<Math.floor(W*H/1800);i++){
+      const x=(i*73+19)%W,y=groundY+10+((i*47+13)%(Math.max(1,H-groundY-10)));
+      ctx.fillStyle=i%3===0?'#c6a06b22':i%3===1?'#211f1b30':'#d4b17a18';ctx.fillRect(x,y,i%4===0?3:2,i%5===0?2:1);
+    }
+    ctx.restore();
+    // A continuous, soft green turf follows the actual terrain contour.
+    ctx.save();
+    // Continuous grassy cap, following the terrain without transparent wedges.
+    ctx.beginPath();ctx.moveTo(terrain[0]?.x??0,terrain[0]?.y??groundY);
+    terrain.forEach(p=>ctx.lineTo(p.x,p.y));
+    for(let i=terrain.length-1;i>=0;i--)ctx.lineTo(terrain[i].x,terrain[i].y+9);
+    ctx.closePath();
+    const turf=ctx.createLinearGradient(0,groundY-25,0,groundY+12);
+    if(levelNow()>=36){turf.addColorStop(0,'#d17a53');turf.addColorStop(.42,'#a8533a');turf.addColorStop(1,'#713a31');}
+    else if(levelNow()>=21){turf.addColorStop(0,'#b9c2ce');turf.addColorStop(.42,'#8994a4');turf.addColorStop(1,'#596576');}
+    else {turf.addColorStop(0,'#6db64a');turf.addColorStop(.42,'#4f9639');turf.addColorStop(1,'#34732f');}ctx.fillStyle=turf;ctx.fill();ctx.restore();
+    // Fine grass blades, with a little variation but no flowers or oversized tufts.
+    for(let x=0;x<W;x+=4){let top=groundY;for(let i=0;i<terrain.length-1;i++){const a=terrain[i],b=terrain[i+1];if(x>=a.x&&x<=b.x){const t=(x-a.x)/(b.x-a.x||1);top=a.y+(b.y-a.y)*t;break;}}
+      const h=2+((x*17)%5);ctx.strokeStyle=levelNow()>=21?(levelNow()>=36?'#d58a6599':'#d1d7df88'):(x%3===0?'#a2d66b99':x%3===1?'#2e6c2fbb':'#5aa441cc');ctx.lineWidth=x%4===0?1.2:.8;ctx.beginPath();ctx.moveTo(x,top+2);ctx.quadraticCurveTo(x-1,top, x+Math.sin(x*.31)*2,top-h);ctx.stroke();
+    }
+    // Thin natural edge, no distant mountain silhouette covering the grass.
+    ctx.save();ctx.beginPath();terrain.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.strokeStyle='#a5d875';ctx.lineWidth=2;ctx.stroke();ctx.strokeStyle='#d2ef9c66';ctx.lineWidth=1;ctx.stroke();ctx.restore();
+    // Landing platform is drawn after the terrain so it stays visible.
     // Landing platform: bright runway plus pulsing beacon and a guidance beam.
     const pulse=.5+.5*Math.sin(elapsed*3.5);
     ctx.save();ctx.globalAlpha=.14+.13*pulse;ctx.fillStyle='#54ffad';ctx.fillRect(pad.x-5,pad.y-34,pad.w+10,45);ctx.restore();
     ctx.save();const beam=ctx.createLinearGradient(0,pad.y-145,0,pad.y-2);beam.addColorStop(0,'#5bffc000');beam.addColorStop(1,'#5bffc0aa');ctx.fillStyle=beam;ctx.fillRect(pad.x+pad.w/2-3,pad.y-145,6,143);ctx.restore();
     ctx.fillStyle='#5bdb9a';ctx.fillRect(pad.x,pad.y-3,pad.w,6);
+    ctx.save();ctx.strokeStyle='#c2ffe2aa';ctx.lineWidth=2;ctx.setLineDash([8,7]);ctx.beginPath();ctx.moveTo(pad.x+10,pad.y+13);ctx.lineTo(pad.x+pad.w-10,pad.y+13);ctx.stroke();ctx.setLineDash([]);ctx.restore();
     ctx.fillStyle='#b5ffd3';ctx.fillRect(pad.x+12,pad.y-7,5,4);ctx.fillRect(pad.x+pad.w-17,pad.y-7,5,4);
     ctx.save();ctx.shadowColor='#65ffc0';ctx.shadowBlur=12+10*pulse;ctx.strokeStyle='#b5ffd3';ctx.lineWidth=2;ctx.strokeRect(pad.x+1,pad.y-5,pad.w-2,10);ctx.restore();
     ctx.fillStyle='#e8fff5';ctx.font='bold 14px Arial';ctx.textAlign='center';ctx.fillText('ПОСАДОЧНАЯ ЗОНА',pad.x+pad.w/2,pad.y+24);
     // Keep the target easy to find even when the landscape is busy.
     ctx.fillStyle='#8bffd0';ctx.font='bold 12px Arial';ctx.fillText('▼ ЦЕЛЬ',pad.x+pad.w/2,pad.y-13);
-    ctx.fillStyle='#ffffff22';ctx.font='14px Arial';ctx.textAlign='left';ctx.fillText('ЗЕМЛЯ · СЕКТОР 0'+Math.min(9,levelNow()),20,30);
-    if(levelNow()>=2){ctx.fillStyle='#ffbd79';ctx.font='bold 14px Arial';ctx.textAlign='right';ctx.fillText('⚠ МЕТЕОРИТЫ: '+(meteors?meteors.length:0),W-20,30);}
+    ctx.fillStyle='#ffffffdd';ctx.font='bold 14px Arial';ctx.textAlign='left';
+    ctx.fillText((levelNow()>=36?'🔴 МАРС':levelNow()>=21?'🌙 ЛУНА':'🌍 ЗЕМЛЯ')+' · УРОВЕНЬ '+levelNow(),20,30);
+    if(levelNow()>=2){ctx.fillStyle='#ffbd79';ctx.font='bold 14px Arial';ctx.textAlign='right';ctx.fillText('⚠ МЕТЕОРИТЫ: '+(meteors?meteors.length:0),W-20,30);} if(levelNow()>=11){ctx.fillStyle='#ff7972';ctx.font='bold 14px Arial';ctx.textAlign='left';ctx.fillText('⚠ ТУРЕЛИ АКТИВНЫ',20,132);}
+    const fogLevels=[4,8,13,17,22,26,30,35,40];
+    fogLevel=fogLevels.includes(levelNow()) ? 1 : 0;
+    if(fogLevel){
+      ctx.fillStyle='rgba(205,220,218,0.12)';ctx.fillRect(0,H*.18,W,H*.82);
+      ctx.fillStyle='#e5f0e9cc';ctx.font='bold 13px Arial';ctx.textAlign='right';ctx.fillText('🌫 ТУМАН',W-20,50);
+    }
+  }
+
+  function drawMeteors(){
+    if(!meteors || !meteors.length) return;
+    for(const m of meteors){
+      ctx.save();
+      // Persistent trail follows the meteor's actual flight direction.
+      const dirX = -m.vx, dirY = -m.vy;
+      const len = Math.hypot(dirX, dirY) || 1;
+      const ux = dirX/len, uy = dirY/len;
+      const tailLen = m.r*4.8;
+      const tx = m.x + ux*tailLen, ty = m.y + uy*tailLen;
+      const glow = ctx.createLinearGradient(m.x,m.y,tx,ty);
+      glow.addColorStop(0,'rgba(255,205,130,0.82)');
+      glow.addColorStop(.35,'rgba(255,126,65,0.42)');
+      glow.addColorStop(1,'rgba(255,85,40,0)');
+      ctx.strokeStyle=glow;ctx.lineWidth=m.r*.9;ctx.lineCap='round';
+      ctx.beginPath();ctx.moveTo(m.x,m.y);ctx.lineTo(tx,ty);ctx.stroke();
+      for(let i=0;i<(m.trail||[]).length;i++){
+        const p=m.trail[i]; const a=(i+1)/(m.trail.length+1)*.25;
+        ctx.globalAlpha=a;ctx.fillStyle='#ff9a55';ctx.beginPath();ctx.arc(p.x,p.y,Math.max(1,m.r*(.12+a*.18)),0,Math.PI*2);ctx.fill();
+      }
+      ctx.globalAlpha=1;
+      // Irregular rocky body with shaded facets and impact craters (not a star).
+      ctx.translate(m.x,m.y);ctx.rotate(m.spin||0);
+      ctx.shadowColor='rgba(255,112,54,.55)';ctx.shadowBlur=12;
+      const rock=ctx.createLinearGradient(-m.r,-m.r,m.r,m.r);
+      rock.addColorStop(0,'#aeb0aa');rock.addColorStop(.35,'#686b68');rock.addColorStop(.72,'#393d40');rock.addColorStop(1,'#171d24');
+      ctx.fillStyle=rock;ctx.strokeStyle='#c0b6a5';ctx.lineWidth=1.4;
+      const pts=12;ctx.beginPath();
+      for(let i=0;i<pts;i++){
+        const a=i*Math.PI*2/pts;const rr=m.r*(.78+((i*7)%5)*.045);
+        const x=Math.cos(a)*rr,y=Math.sin(a)*rr;
+        if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+      }
+      ctx.closePath();ctx.fill();ctx.stroke();ctx.shadowBlur=0;
+      ctx.fillStyle='rgba(15,18,20,.42)';ctx.strokeStyle='rgba(205,194,174,.22)';ctx.lineWidth=1;
+      [[-.28,-.22,.22],[.3,.18,.16],[-.05,.42,.11]].forEach(([x,y,r])=>{ctx.beginPath();ctx.arc(x*m.r,y*m.r,r*m.r,0,Math.PI*2);ctx.fill();ctx.stroke();});
+      ctx.fillStyle='rgba(220,215,198,.2)';ctx.beginPath();ctx.ellipse(-m.r*.28,-m.r*.35,m.r*.25,m.r*.12,-.5,0,Math.PI*2);ctx.fill();
+      ctx.restore();
+    }
+  }
+  function drawFogOverlay(){
+    if(!fogLevel) return;
+    ctx.save();
+
+    // Dense base fog: distant objects and meteorites are heavily obscured.
+    const veil=ctx.createLinearGradient(0,H*.12,0,H);
+    veil.addColorStop(0,'rgba(206,220,220,0.12)');
+    veil.addColorStop(.22,'rgba(210,224,222,0.66)');
+    veil.addColorStop(.55,'rgba(215,228,225,0.86)');
+    veil.addColorStop(1,'rgba(205,220,218,0.78)');
+    ctx.fillStyle=veil;
+    ctx.fillRect(0,H*.12,W,H*.88);
+
+    // Thick moving banks create near-white patches across the flight path.
+    const drift=(elapsed*8)%(W+500);
+    for(let i=0;i<9;i++){
+      const x=((i*W*.20-drift+W+500)%(W+500))-250;
+      const y=H*(.28+(i%5)*.135)+Math.sin(elapsed*.28+i*1.9)*17;
+      const radius=190+(i%3)*55;
+      const cloud=ctx.createRadialGradient(x,y,4,x,y,radius);
+      cloud.addColorStop(0,'rgba(235,242,238,0.94)');
+      cloud.addColorStop(.38,'rgba(229,239,234,0.83)');
+      cloud.addColorStop(.72,'rgba(221,233,228,0.43)');
+      cloud.addColorStop(1,'rgba(221,233,228,0)');
+      ctx.fillStyle=cloud;
+      ctx.fillRect(x-radius,y-radius,radius*2,radius*2);
+    }
+
+    // Meteorite-centred fog: a dense halo hides the rock itself at close range.
+    if(meteors){
+      for(const m of meteors){
+        const halo=ctx.createRadialGradient(m.x,m.y,2,m.x,m.y,145);
+        halo.addColorStop(0,'rgba(238,244,240,0.995)');
+        halo.addColorStop(.42,'rgba(235,243,238,0.96)');
+        halo.addColorStop(.76,'rgba(226,237,231,0.76)');
+        halo.addColorStop(1,'rgba(220,232,226,0)');
+        ctx.fillStyle=halo;
+        ctx.beginPath();
+        ctx.arc(m.x,m.y,145,0,Math.PI*2);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
   }
   function drawShip(){
     ctx.save();ctx.translate(ship.x,ship.y);ctx.rotate(ship.angle);
     if(ship.thrust&&status==='flying'&&ship.fuel>0){
       const flicker=15+Math.random()*14;
+      ctx.save();ctx.globalAlpha=.8;ctx.shadowColor='#ff7b2f';ctx.shadowBlur=24;ctx.fillStyle='#ff8a35';ctx.beginPath();ctx.ellipse(0,26,10,15+flicker*.35,0,0,Math.PI*2);ctx.fill();ctx.restore();
       ctx.fillStyle='#ffb52e';ctx.beginPath();ctx.moveTo(-7,20);ctx.lineTo(0,20+flicker);ctx.lineTo(7,20);ctx.closePath();ctx.fill();
       ctx.fillStyle='#fff3a6';ctx.beginPath();ctx.moveTo(-3,20);ctx.lineTo(0,20+flicker*.62);ctx.lineTo(3,20);ctx.closePath();ctx.fill();
     }
@@ -410,18 +836,67 @@
     // rocket body
     const model=currentModel();
     const body=ctx.createLinearGradient(-13,0,13,0);body.addColorStop(0,model.color);body.addColorStop(.5,'#ffffff');body.addColorStop(1,model.color);
-    ctx.fillStyle=body;ctx.beginPath();
+    ctx.save();ctx.shadowColor=model.accent;ctx.shadowBlur=16;ctx.fillStyle=body;ctx.beginPath();
     if(model.id==='cruiser'){ctx.moveTo(-15,12);ctx.lineTo(-13,-10);ctx.lineTo(-7,-22);ctx.lineTo(7,-22);ctx.lineTo(13,-10);ctx.lineTo(15,12);ctx.closePath();}
     else if(model.id==='voyager'){ctx.moveTo(-12,12);ctx.lineTo(-12,-7);ctx.lineTo(-5,-23);ctx.lineTo(5,-23);ctx.lineTo(12,-7);ctx.lineTo(12,12);ctx.closePath();}
-    else {ctx.moveTo(-11,12);ctx.lineTo(-9,-9);ctx.quadraticCurveTo(0,-29,9,-9);ctx.lineTo(11,12);ctx.closePath();}ctx.fill();
-    ctx.fillStyle=model.accent;ctx.beginPath();ctx.ellipse(0,-7,5,7,0,0,Math.PI*2);ctx.fill();
+    else {ctx.moveTo(-11,12);ctx.lineTo(-9,-9);ctx.quadraticCurveTo(0,-29,9,-9);ctx.lineTo(11,12);ctx.closePath();}ctx.fill();ctx.restore();
+    // Небольшие 2D-детали корпуса: боковые стабилизаторы и панели.
+    ctx.save();
+    ctx.fillStyle='#526b86';ctx.strokeStyle='#c9e5ff';ctx.lineWidth=1.3;
+    ctx.beginPath();ctx.moveTo(-8,2);ctx.lineTo(-18,13);ctx.lineTo(-10,12);ctx.lineTo(-6,7);ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.beginPath();ctx.moveTo(8,2);ctx.lineTo(18,13);ctx.lineTo(10,12);ctx.lineTo(6,7);ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.strokeStyle='#718aa5';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(-7,-2);ctx.lineTo(-7,7);ctx.moveTo(7,-2);ctx.lineTo(7,7);ctx.moveTo(-5,10);ctx.lineTo(5,10);ctx.stroke();
+    ctx.fillStyle='#ffcf68';ctx.shadowColor='#ffb64d';ctx.shadowBlur=5;
+    ctx.fillRect(-9,5,3,3);ctx.fillRect(6,5,3,3);
+    ctx.restore();
+    if(alternateShipView){ctx.strokeStyle='#ffffff';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-7,-13);ctx.lineTo(0,-21);ctx.lineTo(7,-13);ctx.stroke();}
+    ctx.fillStyle=model.accent;ctx.shadowColor=model.accent;ctx.shadowBlur=9;ctx.beginPath();ctx.ellipse(0,-7,5,7,0,0,Math.PI*2);ctx.fill();
     ctx.strokeStyle='#e9f6ff';ctx.lineWidth=2;ctx.stroke();
     ctx.fillStyle=model.accent;ctx.beginPath();ctx.moveTo(-10,4);ctx.lineTo(-19*model.side,14);ctx.lineTo(-9,13);ctx.closePath();ctx.fill();
-    ctx.beginPath();ctx.moveTo(10,4);ctx.lineTo(19*model.side,14);ctx.lineTo(9,13);ctx.closePath();ctx.fill();
+    ctx.beginPath();ctx.moveTo(10,4);ctx.lineTo(19*model.side,14);ctx.lineTo(9,13);ctx.closePath();ctx.fill();ctx.shadowBlur=0;
     ctx.restore();
+    const nick=(($('nickname')&&$('nickname').value.trim())||defaultPlayerName).slice(0,18);
+    ctx.save();ctx.font='bold 13px Arial';ctx.textAlign='center';ctx.textBaseline='bottom';ctx.fillStyle='#061124cc';
+    const nw=ctx.measureText(nick).width+14;roundedRect(ship.x-nw/2,ship.y-48,nw,23,7);
+    ctx.fillStyle='#eaf6ff';ctx.fillText(nick,ship.x,ship.y-31);ctx.restore();
   }
   function drawHUD(){
-    ctx.fillStyle='#071226cc';roundedRect(18,45,205,70,10);
+    // Proximity radar: distance to the nearest meteorite, with an alarm that intensifies nearby.
+    if(levelNow()>=2){
+      let nearest=Infinity;
+      if(meteors) for(const m of meteors) nearest=Math.min(nearest,Math.hypot(ship.x-m.x,ship.y-m.y));
+      const metres=Number.isFinite(nearest)?Math.max(1,Math.round(nearest*.8)):null;
+      const danger=metres===null?0:Math.max(0,Math.min(1,1-metres/620));
+      const pulse=.5+.5*Math.sin(elapsed*(5+danger*13));
+      const red=metres!==null && metres<620;
+      ctx.save();
+      ctx.fillStyle='#07101ddd';roundedRect(W/2-116,12,232,58,11);
+      ctx.strokeStyle=red?`rgba(255,${Math.round(65+90*(1-danger))},${Math.round(55+35*(1-danger))},${.45+.55*pulse*danger})`:'#ff555566';
+      ctx.lineWidth=red?1.5+danger*2:1;ctx.stroke();
+      const glow=red?8+danger*25*pulse:2;
+      ctx.shadowColor='#ff2929';ctx.shadowBlur=glow;
+      ctx.beginPath();ctx.arc(W/2-88,40,9+danger*2,0,Math.PI*2);
+      ctx.fillStyle=red?`rgba(255,${Math.round(25+65*(1-danger))},${Math.round(20+25*(1-danger))},${.35+.65*pulse*danger})`:'#762d32';
+      ctx.fill();ctx.shadowBlur=0;
+      ctx.textAlign='left';ctx.fillStyle='#ffe9e9';ctx.font='bold 11px Arial';ctx.fillText('РАДАР МЕТЕОРИТОВ',W/2-71,29);
+      ctx.font='bold 17px Arial';
+      ctx.fillStyle=red?`rgba(255,${Math.round(75+100*(1-danger))},${Math.round(65+80*(1-danger))},${.65+.35*pulse*danger})`:'#ffaaa5';
+      ctx.fillText(metres===null?'НЕТ СИГНАЛА':metres+' м до метеорита',W/2-71,53);
+      ctx.fillStyle='#ff4545';roundedRect(W/2+75,23,28,7,4);
+      ctx.fillStyle='#ff3b35';roundedRect(W/2+75,23,28*danger,7,4);
+      ctx.restore();
+    }
+    if(levelNow()>=36){
+      const hot=shipTemperature>=2500;
+      ctx.save();ctx.fillStyle='#160b12dd';roundedRect(W-238,45,220,76,10);ctx.strokeStyle=hot?'#ff554f':'#ff9b63';ctx.lineWidth=1.5;ctx.stroke();
+      ctx.textAlign='left';ctx.fillStyle='#fff0e8';ctx.font='bold 14px Arial';ctx.fillText('🌡 ТЕМПЕРАТУРА КОРАБЛЯ',W-226,66);
+      ctx.fillStyle='#49272a';roundedRect(W-226,78,195,10,5);ctx.fillStyle=hot?'#ff3e32':'#ff9b43';roundedRect(W-226,78,195*Math.min(1,shipTemperature/2500),10,5);
+      ctx.fillStyle='#fff';ctx.font='bold 14px Arial';ctx.fillText(Math.round(shipTemperature)+'° / 2500°',W-226,108);
+      if(hot){ctx.fillStyle='#ff5148';ctx.font='bold 13px Arial';ctx.fillText('ВЗРЫВ ЧЕРЕЗ '+Math.ceil(Math.max(0,10-marsOverheatTimer))+' сек.',W-226,139);}
+      ctx.restore();
+    }
+    ctx.save();ctx.fillStyle='#061124dc';roundedRect(18,45,205,70,10);ctx.strokeStyle='#8ddcff66';ctx.lineWidth=1;ctx.stroke();ctx.restore();
     ctx.fillStyle='#e8f3ff';ctx.font='bold 15px Arial';ctx.textAlign='left';
     ctx.fillText('Вертикальная скорость: '+(ship.vy/10).toFixed(1),30,68);
     ctx.fillText('Боковая скорость: '+(ship.vx/10).toFixed(1),30,91);
@@ -453,31 +928,78 @@
     for(const e of explosions){e.x+=e.vx*dt;e.y+=e.vy*dt;e.vx*=Math.pow(.35,dt);e.vy=e.vy*Math.pow(.35,dt)+35*dt;e.life-=dt;}
     explosions=explosions.filter(e=>e.life>0);
     if(status!=='flying')return;
-    const left=keys.arrowleft||keys.a, right=keys.arrowright||keys.d, thrust=keys[' ']||keys.arrowup||keys.w;
+    flightSeconds+=dt; updateRecordsUI();
+    if(levelNow()>=36){
+      shipTemperature=Math.min(2500,700+180*flightSeconds);
+      if(shipTemperature>=2500){
+        marsOverheatTimer+=dt;
+        if(marsOverheatTimer>=10){
+          spawnExplosion(ship.x,ship.y);save.landingStreak=0;persist();playExplosionSound();status='crashed';ship.thrust=false;
+          setMessage('🔥 Корабль перегрелся на Марсе и взорвался! Нужно посадить его до конца отсчёта.');
+          showOutcomeButtons();return;
+        }
+      }
+    }
+    // Ground turrets begin firing from level 11 onward, once every 2.5 seconds.
+    if(levelNow()>=11 && turrets.length){
+      turretCooldown-=dt;
+      for(const t of turrets)t.flash=Math.max(0,t.flash-dt);
+      if(turretCooldown<=0){
+        turretCooldown=2.5;
+        for(const t of turrets){const sx=t.x, sy=groundAt(sx)-17;const dx=ship.x-sx,dy=ship.y-sy;const len=Math.hypot(dx,dy)||1;const speed=145;turretShots.push({x:sx,y:sy,vx:dx/len*speed,vy:dy/len*speed,life:4});t.flash=.22;}
+      }
+      for(const shot of turretShots){shot.x+=shot.vx*dt;shot.y+=shot.vy*dt;shot.life-=dt;const dx=ship.x-shot.x,dy=ship.y-shot.y;if(dx*dx+dy*dy<19*19){spawnExplosion(ship.x,ship.y);save.landingStreak=0; persist(); playExplosionSound();status='crashed';ship.thrust=false;if(tournament.active){tournament.playerDone=true;setMessage('💥 Турель подбила корабль! Ждём, пока боты закончат раунд.');}else setMessage('💥 Турель подбила корабль! Нажми «Повторить попытку».');showOutcomeButtons();maybeFinishTournamentRound();return;}}
+      turretShots=turretShots.filter(q=>q.life>0&&q.x>-30&&q.x<W+30&&q.y>-30&&q.y<H+30);
+    }
+    const left=keys.left||keys.arrowleft||keys.a, right=keys.right||keys.arrowright||keys.d, thrust=keys.thrust||keys[' ']||keys.arrowup||keys.w;
     const model=currentModel();
     ship.thrust=!!thrust&&ship.fuel>0;
     // Speeds are in pixels/second. The previous version multiplied movement by dt twice,
     // making left/right almost impossible to notice.
-    const sideAccel=250*model.side;
+    const windFactor=windStrength>=100?0.78:windStrength>=50?0.88:1;
+    const sideAccel=250*model.side*windFactor;
     if(left)ship.vx-=sideAccel*dt;
     if(right)ship.vx+=sideAccel*dt;
-    ship.vx*=Math.pow(.90,dt);
-    ship.vx=Math.max(-155,Math.min(155,ship.vx));
-    const gravity=85;
+    // Wind gently pushes the ship sideways; gusts are stronger in waves.
+    if(windStrength) {
+      // Wind is a real lateral force: gusts build and push the lander across the screen.
+      const gust=0.72+0.48*(0.5+0.5*Math.sin(elapsed*1.65+levelNow()*1.7));
+      ship.vx += windDirection*windStrength*gust*dt;
+    }
+    // Strong winds retain momentum instead of being immediately damped away.
+    const airDamping=windStrength>=100?0.955:windStrength>=50?0.93:0.90;
+    ship.vx*=Math.pow(airDamping,dt);
+    const maxSideSpeed=windStrength>=100?175:windStrength>=50?160:155;
+    ship.vx=Math.max(-maxSideSpeed,Math.min(maxSideSpeed,ship.vx));
+    const gravity=levelNow()>=36?112:(levelNow()>=21?58:85);
     ship.vy+=gravity*dt;
-    if(ship.thrust){ship.vy-=(175*model.thrust+save.engine*25)*dt;ship.fuel-= (7+save.engine)*dt;ship.fuel=Math.max(0,ship.fuel);}
+    if(ship.thrust){ship.vy-=((levelNow()>=21&&levelNow()<36?145:175)*model.thrust+save.engine*25)*dt;ship.fuel-= (7+save.engine)*dt;ship.fuel=Math.max(0,ship.fuel);}
     ship.vy=Math.max(-190,Math.min(210,ship.vy));
     ship.x+=ship.vx*dt;
     ship.y+=ship.vy*dt;
+    // Небольшой наклон в сторону полёта и плавное выравнивание корпуса.
+    const targetAngle=Math.max(-0.24,Math.min(0.24,ship.vx/155*0.24));
+    ship.angle+=(targetAngle-ship.angle)*Math.min(1,dt*3.8);
     ship.x=Math.max(22,Math.min(W-22,ship.x));
+    // Leaving the top of the flight area is an emergency: return within five seconds.
+    if(ship.y < -24){
+      topBoundaryTimer+=dt;
+      if(topBoundaryTimer>=5){
+        spawnExplosion(ship.x,ship.y);save.landingStreak=0;persist();playExplosionSound();status='crashed';ship.thrust=false;
+        setMessage('💥 Корабль улетел за верхнюю границу! Вернуться нужно было за 5 секунд.');
+        showOutcomeButtons();return;
+      }
+    } else {
+      topBoundaryTimer=0;
+    }
     // Meteorites get faster as levels rise. A collision ends the flight.
     if(meteors){
       for(const m of meteors){
-        m.x+=m.vx*dt;m.y+=m.vy*dt;m.spin+=m.spinV*dt;
-        if(m.x<-35){m.x=W+25;} if(m.x>W+35){m.x=-25;}
+        m.x+=m.vx*dt;m.y+=m.vy*dt;m.spin+=m.spinV*dt;m.trail=m.trail||[];m.trail.push({x:m.x,y:m.y});if(m.trail.length>12)m.trail.shift();
+        if(m.x<-35){m.x=W+25;m.trail=[];} if(m.x>W+35){m.x=-25;m.trail=[];}
         if(m.y>390){m.y=55+Math.random()*180;}
         const dx=ship.x-m.x,dy=ship.y-m.y;
-        if(dx*dx+dy*dy<(m.r+15)*(m.r+15)){spawnExplosion(ship.x,ship.y);status='crashed';ship.thrust=false;if(tournament.active){tournament.playerDone=true;setMessage('💥 Метеорит разбил корабль. Ждём, пока боты закончат раунд.');}else setMessage('💥 Метеорит разбил корабль! Нажми «Повторить попытку», чтобы попробовать снова.');showOutcomeButtons();maybeFinishTournamentRound();return;}
+        if(dx*dx+dy*dy<(m.r+15)*(m.r+15)){spawnExplosion(ship.x,ship.y);save.landingStreak=0; persist(); playExplosionSound();status='crashed';ship.thrust=false;if(tournament.active){tournament.playerDone=true;setMessage('💥 Метеорит разбил корабль. Ждём, пока боты закончат раунд.');}else setMessage('💥 Метеорит разбил корабль! Нажми «Повторить попытку», чтобы попробовать снова.');showOutcomeButtons();maybeFinishTournamentRound();return;}
       }
     }
     const bottom=ship.y+22, ground=groundAt(ship.x);
@@ -485,13 +1007,13 @@
       const onPad=ship.x>pad.x+12&&ship.x<pad.x+pad.w-12;
       const soft=ship.vy<55&&Math.abs(ship.vx)<45;
       if(onPad&&soft){
-        const oldLevel=levelNow();status='landed';if(tournament.active){tournament.playerDone=true;registerTournamentLanding('Ты');}save.landings++;const reward=20+Math.round(Math.max(0,20-Math.abs(ship.vx)/5-Math.max(0,ship.vy)/12));save.coins+=reward;persist();
+        const oldLevel=levelNow();status='landed';save.landingStreak=(save.landingStreak||0)+1;save.bestLandingStreak=Math.max(save.bestLandingStreak||0,save.landingStreak);if(save.bestLandingTime===null||save.bestLandingTime===undefined||flightSeconds<save.bestLandingTime)save.bestLandingTime=flightSeconds;if(tournament.active){tournament.playerDone=true;registerTournamentLanding('Ты');}save.landings++;const reward=20+Math.round(Math.max(0,20-Math.abs(ship.vx)/5-Math.max(0,ship.vy)/12));save.coins+=reward;persist();
         setMessage('Отлично! Мягкая посадка: +'+reward+' монет. '+(levelNow()>oldLevel?'Открыт уровень '+levelNow()+' — опасность возросла!':'Покупай новые корабли и лети снова.')); showOutcomeButtons();
         $('message').textContent=message;
       } else if(save.hull>0 && onPad && ship.vy<95 && Math.abs(ship.vx)<75){
-        status='landed';if(tournament.active){tournament.playerDone=true;registerTournamentLanding('Ты');}save.landings++;const reward=12;save.coins+=reward;persist();setMessage('Жёсткая, но успешная посадка благодаря корпусу! +12 монет.');showOutcomeButtons();
+        status='landed';save.landingStreak=(save.landingStreak||0)+1;save.bestLandingStreak=Math.max(save.bestLandingStreak||0,save.landingStreak);if(save.bestLandingTime===null||save.bestLandingTime===undefined||flightSeconds<save.bestLandingTime)save.bestLandingTime=flightSeconds;if(tournament.active){tournament.playerDone=true;registerTournamentLanding('Ты');}save.landings++;const reward=12;save.coins+=reward;persist();setMessage('Жёсткая, но успешная посадка благодаря корпусу! +12 монет.');showOutcomeButtons();
       } else {
-        status='crashed';spawnExplosion(ship.x,ground-10);if(tournament.active){tournament.playerDone=true;setMessage('💥 Посадка не удалась. Ждём, пока боты закончат раунд.');}else setMessage(onPad?'💥 Слишком жёсткое касание! Нажми «Повторить попытку».':'💥 Ты промахнулся мимо площадки! Нажми «Повторить попытку».');showOutcomeButtons();
+        save.landingStreak=0; persist(); playExplosionSound();status='crashed';spawnExplosion(ship.x,ground-10);if(tournament.active){tournament.playerDone=true;setMessage('💥 Посадка не удалась. Ждём, пока боты закончат раунд.');}else setMessage(onPad?'💥 Слишком жёсткое касание! Нажми «Повторить попытку».':'💥 Ты промахнулся мимо площадки! Нажми «Повторить попытку».');showOutcomeButtons();
       }
       ship.y=ground-22;ship.vy=0;ship.vx=0;ship.thrust=false;
     }
@@ -514,16 +1036,8 @@
         }
         continue;
       }
-      if(b.landed){
-        if(tournament.active)continue;
-        b.landTimer-=dt;
-        if(b.landTimer<=0){
-          b.landed=false;
-          b.x=W*(.58+Math.random()*.22); b.y=65+Math.random()*45;
-          b.vx=(Math.random()-.5)*8; b.vy=0;
-        }
-        continue;
-      }
+      // Успешно севший бот остаётся на площадке до перезапуска уровня.
+      if(b.landed) continue;
 
       // AI flight controller: steer toward a safe point on the pad, brake sideways,
       // and use the engine to control descent instead of simply falling under gravity.
@@ -534,6 +1048,12 @@
       b.vx+=Math.max(-95,Math.min(95,vxError*2.2))*dt;
       b.vx*=Math.pow(.985,dt);
       b.vx=Math.max(-55,Math.min(55,b.vx));
+      // Wind affects bot craft too; they try to compensate but can still drift.
+      if(windStrength){
+        const botGust=0.72+0.48*(0.5+0.5*Math.sin(elapsed*1.4+b.phase));
+        b.vx+=windDirection*windStrength*0.22*botGust*dt;
+        b.vx=Math.max(-82,Math.min(82,b.vx));
+      }
 
       const ground=groundAt(b.x);
       const altitude=Math.max(0,ground-(b.y+18));
@@ -574,10 +1094,40 @@
       }
     }
   }
+  function drawTurrets(){
+    if(levelNow()<11)return;
+    for(const t of turrets){const y=groundAt(t.x);ctx.save();ctx.translate(t.x,y);ctx.fillStyle='#28364c';ctx.strokeStyle='#b7d4f7';ctx.lineWidth=2;ctx.fillRect(-13,-20,26,18);ctx.strokeRect(-13,-20,26,18);ctx.fillStyle='#667f9f';ctx.fillRect(-4,-31,8,14);ctx.fillStyle=t.flash>0?'#fff0a0':'#ff6b61';ctx.beginPath();ctx.arc(0,-31,4,0,Math.PI*2);ctx.fill();ctx.restore();}
+    for(const q of turretShots){ctx.save();ctx.fillStyle='#ff594f';ctx.shadowColor='#ff392f';ctx.shadowBlur=10;ctx.beginPath();ctx.arc(q.x,q.y,5,0,Math.PI*2);ctx.fill();ctx.restore();}
+  }
   function drawBots(){
     for(const b of bots){
       if(!b.alive){ctx.save();ctx.globalAlpha=.9;ctx.fillStyle='#ffb05a';ctx.font='bold 12px Arial';ctx.textAlign='center';ctx.fillText('💥 '+b.name+' — возрождение',b.x,Math.max(25,b.y-20));ctx.restore();continue;}
-      ctx.save();ctx.translate(b.x,b.y);ctx.rotate(Math.max(-.25,Math.min(.25,b.vx*.004)));ctx.fillStyle=b.color;ctx.strokeStyle='#e9ffff';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(0,-17);ctx.lineTo(10,8);ctx.lineTo(0,5);ctx.lineTo(-10,8);ctx.closePath();ctx.fill();ctx.stroke();ctx.fillStyle='#d8ffff';ctx.beginPath();ctx.ellipse(0,-5,3.5,4.5,0,0,Math.PI*2);ctx.fill();if(!b.landed){ctx.fillStyle='#ffbd65';ctx.beginPath();ctx.moveTo(-3,8);ctx.lineTo(0,15+Math.random()*5);ctx.lineTo(3,8);ctx.closePath();ctx.fill();}ctx.restore();ctx.fillStyle='#ffffff';ctx.font='bold 11px Arial';ctx.textAlign='center';ctx.fillText(b.name+(b.landed?' · посадка':''),b.x,b.y-24);
+      ctx.save();ctx.translate(b.x,b.y);ctx.rotate(Math.max(-.25,Math.min(.25,b.vx*.004)));
+      // New bot silhouette: compact twin-pod landing craft with a central cockpit.
+      const flicker=.78+.22*Math.sin(elapsed*15+b.phase);
+      ctx.shadowColor=b.color;ctx.shadowBlur=7;
+      // rear engine pods
+      ctx.fillStyle='#25364a';ctx.strokeStyle=b.color;ctx.lineWidth=1.8;
+      ctx.beginPath();ctx.roundRect(-19,-2,9,18,4);ctx.fill();ctx.stroke();
+      ctx.beginPath();ctx.roundRect(10,-2,9,18,4);ctx.fill();ctx.stroke();
+      // broad central fuselage
+      ctx.fillStyle='#34485e';ctx.beginPath();
+      ctx.moveTo(-13,-8);ctx.quadraticCurveTo(-10,-16,0,-16);
+      ctx.quadraticCurveTo(10,-16,13,-8);ctx.lineTo(12,9);
+      ctx.quadraticCurveTo(0,16,-12,9);ctx.closePath();ctx.fill();ctx.stroke();
+      // short landing wings
+      ctx.fillStyle=b.color;ctx.globalAlpha=.88;
+      ctx.beginPath();ctx.moveTo(-10,-1);ctx.lineTo(-25,5);ctx.lineTo(-21,11);ctx.lineTo(-9,8);ctx.closePath();ctx.fill();
+      ctx.beginPath();ctx.moveTo(10,-1);ctx.lineTo(25,5);ctx.lineTo(21,11);ctx.lineTo(9,8);ctx.closePath();ctx.fill();
+      ctx.globalAlpha=1;ctx.shadowBlur=0;
+      // cockpit window and nose light
+      ctx.fillStyle='#9fe8ff';ctx.beginPath();ctx.ellipse(0,-7,5.5,4.5,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#f5fbff';ctx.beginPath();ctx.arc(0,-14,1.8,0,Math.PI*2);ctx.fill();
+      // twin engine exhausts
+      if(!b.landed){ctx.globalAlpha=flicker;ctx.fillStyle='#ffad4e';ctx.shadowColor='#ff7437';ctx.shadowBlur=8;
+        for(const ex of [-14,14]){ctx.beginPath();ctx.moveTo(ex-2,14);ctx.lineTo(ex,22+Math.random()*5);ctx.lineTo(ex+2,14);ctx.closePath();ctx.fill();}
+      }
+      ctx.restore();ctx.fillStyle='#ffffff';ctx.font='bold 11px Arial';ctx.textAlign='center';ctx.fillText(b.name+(b.landed?' · посадка':''),b.x,b.y-24);
     }
   }
   function drawRemotePlayers(){
@@ -621,10 +1171,42 @@
   $('leaveRoom').onclick=()=>{if(socket&&roomCode)socket.emit('leave-room',{roomCode});roomCode='';myPlayerId='';sharedSeed=0;remotePlayers={};netPlayers.innerHTML='';$('createRoom').disabled=false;$('joinRoom').disabled=false;$('leaveRoom').disabled=true;networkMessage('Ты вышел из комнаты.');};
   function frame(t){
     const dt=Math.min(.04,(t-lastTime)/1000||0);lastTime=t;
-    update(dt);drawBackground();drawBots();drawShip();drawExplosions(dt);drawRemotePlayers();drawHUD();
+    if(!paused)update(dt);syncEngineSound();drawBackground();drawMeteors();drawFogOverlay();drawTurrets();drawBots();drawShip();if(!paused)drawExplosions(dt);drawRemotePlayers();drawHUD();
     if(socket&&socket.connected&&roomCode&&t-lastNetworkSend>100){lastNetworkSend=t;socket.emit('player-update',{roomCode,name:$('nickname').value.trim()||'Пилот',x:ship.x,y:ship.y,angle:ship.angle,color:currentModel().accent,status});}
     requestAnimationFrame(frame);
   }
+  function setPaused(value){
+    paused=!!value; $('pauseOverlay').classList.toggle('open',paused);
+    for(const k in keys)keys[k]=false;
+    if(paused){ship.thrust=false;$('pauseTitle').textContent='⏸ Пауза';$('pauseSubtitle').textContent='Полёт остановлен';}
+  }
+  $('resumeGame').onclick=()=>setPaused(false);
+  $('pauseSettings').onclick=()=>{
+    $('settingsNickname').value=$('nickname').value.trim()||defaultPlayerName;
+    $('settingsSound').checked=!soundMuted;
+    $('pauseOverlay').classList.remove('open');$('settingsOverlay').classList.add('open');refreshSettingsActions();
+  };
+  $('saveSettings').onclick=()=>{
+    $('nickname').value=$('settingsNickname').value.trim().slice(0,18)||defaultPlayerName;
+    try{localStorage.setItem('spaceLandingNickname',$('nickname').value);}catch(e){}
+    soundMuted=!$('settingsSound').checked;syncEngineSound();
+    $('settingsOverlay').classList.remove('open');$('pauseOverlay').classList.add('open');
+    $('pauseTitle').textContent='⏸ Пауза';$('pauseSubtitle').textContent='Настройки сохранены';
+  };
+  $('backFromSettings').onclick=()=>{$('settingsOverlay').classList.remove('open');$('pauseOverlay').classList.add('open');};
+  function refreshSettingsActions(){
+    $('settingsContinue').hidden=$('continueLevel').hidden;
+    $('settingsContinue').textContent=$('continueLevel').textContent||'▶ Продолжить';
+    $('settingsRetry').hidden=$('retryFlight').hidden;
+  }
+  $('settingsContinue').onclick=()=>{$('settingsOverlay').classList.remove('open');$('pauseOverlay').classList.remove('open');$('continueLevel').click();};
+  $('settingsRetry').onclick=()=>{$('settingsOverlay').classList.remove('open');$('pauseOverlay').classList.remove('open');$('retryFlight').click();};
+  const originalSettingsOpen=$('pauseSettings').onclick;
+  $('pauseSettings').onclick=()=>{if(originalSettingsOpen)originalSettingsOpen();refreshSettingsActions();};
+
+  try{const storedNick=localStorage.getItem('spaceLandingNickname');if(storedNick)$('nickname').value=storedNick;}catch(e){}
+  $('pauseSave').onclick=()=>saveToDisk();
+  $('pauseLoad').onclick=()=> $('saveFileInput').click();
   updateTournamentUI();newFlight();requestAnimationFrame(frame);
 })();
 </script>
